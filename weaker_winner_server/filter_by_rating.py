@@ -1,4 +1,5 @@
 import pika
+import time
 
 from common.constants import RATING_INDEX
 from common.partition_function import get_key, get_posibles_keys
@@ -20,7 +21,7 @@ def send_to_group_by(channel, matched_rows):
         rows_list.append(STRING_COLUMN_SEPARATOR.join(matched_row))
         rows_by_key[key] = rows_list
 
-    print(f"rows to send: {rows_by_key}")
+    # print(f"rows to send: {rows_by_key}")
     for key, rows in rows_by_key.items():
         rows_string = STRING_LINE_SEPARATOR.join(rows)
         channel.basic_publish(exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
@@ -55,6 +56,7 @@ def filter_by_rating(channel, method, properties, body):
 
 
 def main():
+    # TODO hacer algo para que este espere que todos los reducers esten listos, porque el exchange no rutea si tardan en susbscribirse
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host=RABBITMQ_HOST))
 

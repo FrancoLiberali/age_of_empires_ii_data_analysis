@@ -93,8 +93,6 @@ def send_file_in_chunks(channel, queue_name, file_path, get_line_string_function
     with open(file_path) as csvfile:
         reader = csv.reader(csvfile)
         for i, line in enumerate(reader):
-            if i >= 200:
-                break
             if i == 0:
                 # file header
                 continue

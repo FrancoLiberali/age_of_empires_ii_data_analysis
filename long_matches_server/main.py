@@ -5,11 +5,11 @@ from datetime import datetime, time
 from communications.constants import STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
-    MATCHES_IDS_SEPARATOR, \
     CLIENT_TO_LONG_MATCHES_QUEUE_NAME, \
     LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
     RABBITMQ_HOST, \
     SENTINEL_MESSAGE
+from communications.rabbitmq_interface import send_matches_ids, send_sentinel
 
 TOKEN_INDEX = 0
 AVERAGE_RATING_INDEX = 1
@@ -41,22 +41,6 @@ def is_matched(columns):
         is_duration_enough(columns[DURATION_INDEX]))
 
 
-def respond(response_channel, matches_ids):
-    response_string = MATCHES_IDS_SEPARATOR.join(matches_ids)
-    response_channel.basic_publish(
-        exchange='',
-        routing_key=LONG_MATCHES_TO_CLIENT_QUEUE_NAME,
-        body=response_string.encode(STRING_ENCODING)
-    )
-
-# TODO usar tambien el client esto
-def send_sentinel(channel, queue):
-    channel.basic_publish(
-        exchange='',
-        routing_key=queue,
-        body=SENTINEL_MESSAGE.encode(STRING_ENCODING)
-    )
-
 def filter_by_duration_average_rating_and_server(channel, method, properties, body):
     chunk_string = body.decode(STRING_ENCODING)
     if chunk_string == SENTINEL_MESSAGE:
@@ -70,7 +54,7 @@ def filter_by_duration_average_rating_and_server(channel, method, properties, bo
             if is_matched(columns):
                 matches_ids.append(columns[TOKEN_INDEX])
         if (len(matches_ids) > 0):
-            respond(channel, matches_ids)
+            send_matches_ids(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME, matches_ids)
 
 def main():
     connection = pika.BlockingConnection(

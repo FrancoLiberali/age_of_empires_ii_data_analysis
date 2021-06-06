@@ -11,6 +11,7 @@ LONG_MATCHES_TO_CLIENT_QUEUE_NAME = 'long_matches_to_client'
 CLIENT_TO_WEAKER_WINNER_QUEUE_NAME = 'client_to_weaker_winner'
 FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME = 'filter_by_rating_to_group_by'
 WEAKER_WINNER_TO_CLIENT_QUEUE_NAME = 'weaker_winner_to_client'
+GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME = 'group_by_match_reducers_barrier'
 
 SENTINEL_MESSAGE = "SENTINEL"
 

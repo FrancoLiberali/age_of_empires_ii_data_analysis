@@ -1,17 +1,5 @@
-version: '3'
+version: '3.5'
 services:
-  rabbitmq:
-    build:
-      context: ./rabbitmq
-      dockerfile: rabbitmq.dockerfile
-    ports:
-      - 15672:15672
-    healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:15672"]
-        interval: 10s
-        timeout: 5s
-        retries: 10
-
   client:
     build:
       context: .
@@ -19,28 +7,21 @@ services:
     volumes:
       - ./client:/client
       - ./communications:/client/communications
-    restart: on-failure
-    depends_on:
-      - rabbitmq
-    links: 
-      - rabbitmq
     environment:
       - PYTHONUNBUFFERED=1
+    networks:
+      - age_of_empires_net
 
   long_matches_server:
-    build:
-      context: ./long_matches_server
-      dockerfile: long_matches_server.dockerfile
+    image: rabbitmq-python-base:0.0.1
     volumes:
       - ./long_matches_server:/long_matches_server
       - ./communications:/long_matches_server/communications
-    restart: on-failure
-    depends_on:
-      - rabbitmq
-    links: 
-      - rabbitmq
+    entrypoint: python3 /long_matches_server/main.py
     environment:
       - PYTHONUNBUFFERED=1
+    networks:
+      - age_of_empires_net
 
   filter_by_rating_server:
     image: rabbitmq-python-base:0.0.1
@@ -48,13 +29,12 @@ services:
       - ./weaker_winner_server:/filter_by_rating
       - ./communications:/filter_by_rating/communications
     entrypoint: python3 /filter_by_rating/filter_by_rating.py
-    restart: on-failure
-    depends_on:
-      - rabbitmq
-    links: 
-      - rabbitmq
     environment:
       - PYTHONUNBUFFERED=1
+    networks:
+      - age_of_empires_net
+    depends_on:
+      - group_by_match_server
 
   group_by_match_server:
     image: rabbitmq-python-base:0.0.1
@@ -62,10 +42,12 @@ services:
       - ./weaker_winner_server:/group_by_match
       - ./communications:/group_by_match/communications
     entrypoint: python3 /group_by_match/group_by_match.py
-    restart: on-failure
-    depends_on:
-      - rabbitmq
-    links: 
-      - rabbitmq
     environment:
       - PYTHONUNBUFFERED=1
+    networks:
+      - age_of_empires_net
+
+networks:
+   age_of_empires_net:
+      external:
+         name: age_of_empires_net
