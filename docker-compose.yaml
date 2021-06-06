@@ -14,8 +14,11 @@ services:
 
   client:
     build:
-      context: ./client
-      dockerfile: client.dockerfile
+      context: .
+      dockerfile: ./client/client.dockerfile
+    volumes:
+      - ./client:/client
+      - ./common:/client/common
     restart: on-failure
     depends_on:
       - rabbitmq
@@ -28,6 +31,9 @@ services:
     build:
       context: ./long_matches_server
       dockerfile: long_matches_server.dockerfile
+    volumes:
+      - ./long_matches_server:/long_matches_server
+      - ./common:/long_matches_server/common
     restart: on-failure
     depends_on:
       - rabbitmq

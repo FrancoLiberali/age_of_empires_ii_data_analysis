@@ -1,4 +1,4 @@
 FROM rabbitmq-python-base:0.0.1
 
-COPY client.py /client.py
-CMD /client.py
+COPY ./datasets/matches.csv /matches.csv
+CMD /client/main.py
