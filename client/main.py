@@ -40,7 +40,6 @@ def get_line_string_for_long_matches(line_list):
         ]
     )
 
-
 MATCH_INDEX = 1 # TODO envvar
 RATING_INDEX = 2  # TODO envvar
 WINNER_INDEX = 6  # TODO envvar
@@ -103,7 +102,11 @@ def send_file_in_chunks(channel, queue_name, file_path, get_line_string_function
         send_chunk(channel, queue_name, chunk)
         send_sentinel(channel, queue_name)
 
-def request_long_matches(channel):
+
+def request_long_matches():
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host=RABBITMQ_HOST))
+    channel = connection.channel()
     channel.queue_declare(queue=CLIENT_TO_LONG_MATCHES_QUEUE_NAME)
     channel.queue_declare(queue=LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
 
@@ -114,8 +117,13 @@ def request_long_matches(channel):
 
     get_matches_ids(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME,
                     "Los IDs de matches que excedieron las dos horas de juego por pro players (average_rating > 2000) en los servers koreacentral, southeastasia y eastus son: ")
+    connection.close()
 
-def request_weaker_winner(channel):
+
+def request_weaker_winner():
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host=RABBITMQ_HOST))
+    channel = connection.channel()
     channel.queue_declare(queue=CLIENT_TO_WEAKER_WINNER_QUEUE_NAME)
     channel.queue_declare(queue=WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
 
@@ -126,25 +134,19 @@ def request_weaker_winner(channel):
 
     get_matches_ids(channel, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME,
                     "Los IDs de matches en partidas 1v1 donde el ganador tiene un rating 30 % menor al perdedor y el rating del ganador es superior a 1000 son: ")
+    connection.close()
 
 def main():
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
-
-    # long_matches_client = threading.Thread(
-        # target=request_long_matches,
-        # args=((channel),))
-    # long_matches_client.start()
+    long_matches_client = threading.Thread(
+        target=request_long_matches)
+    long_matches_client.start()
     
     weaker_winner_client = threading.Thread(
-        target=request_weaker_winner,
-        args=((channel),))
+        target=request_weaker_winner)
     weaker_winner_client.start()
 
-    # long_matches_client.join()
+    long_matches_client.join()
     weaker_winner_client.join()
-    connection.close()
 
 if __name__ == '__main__':
     main()
