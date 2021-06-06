@@ -2,7 +2,7 @@
 import pika
 from datetime import datetime, time
 
-from common.constants import STRING_ENCODING, \
+from communications.constants import STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
     MATCHES_IDS_SEPARATOR, \
@@ -21,8 +21,8 @@ MINIMUM_DURATION = time(hour=2)  # TODO envvar
 REQUIRED_SERVERS = ['koreacentral', 'southeastasia', 'eastus']  # TODO envvar
 DURATION_FORMAT = '%H:%M:%S'
 
-# TODO catchear exceptions
 def is_average_rating_enough(average_rating_string):
+    # TODO catchear exceptions
     return (average_rating_string != '' and int(average_rating_string) > MINIMUM_AVERAGE_RATING)
 
 def is_duration_enough(duration_string):
@@ -57,27 +57,20 @@ def send_sentinel(channel, queue):
         body=SENTINEL_MESSAGE.encode(STRING_ENCODING)
     )
 
-
-def get_filter_by_duration_average_rating_and_server_function(connection):
-    # function currying in python
-    def filter_by_duration_average_rating_and_server(channel, method, properties, body):
-        chunk_string = body.decode(STRING_ENCODING)
-        if chunk_string == SENTINEL_MESSAGE:
-            print("Sentinel message received, stoping consuming")
-            channel.stop_consuming()
-            send_sentinel(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
-            connection.close()
-        else:
-            matches_ids = []
-            for row in chunk_string.split(STRING_LINE_SEPARATOR):
-                columns = row.split(STRING_COLUMN_SEPARATOR)
-                if is_matched(columns):
-                    matches_ids.append(columns[TOKEN_INDEX])
-
-            if (len(matches_ids) > 0):
-                respond(channel, matches_ids)
-    return filter_by_duration_average_rating_and_server
-
+def filter_by_duration_average_rating_and_server(channel, method, properties, body):
+    chunk_string = body.decode(STRING_ENCODING)
+    if chunk_string == SENTINEL_MESSAGE:
+        print("Sentinel message received, stoping consuming")
+        channel.stop_consuming()
+        send_sentinel(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
+    else:
+        matches_ids = []
+        for row in chunk_string.split(STRING_LINE_SEPARATOR):
+            columns = row.split(STRING_COLUMN_SEPARATOR)
+            if is_matched(columns):
+                matches_ids.append(columns[TOKEN_INDEX])
+        if (len(matches_ids) > 0):
+            respond(channel, matches_ids)
 
 def main():
     connection = pika.BlockingConnection(
@@ -89,13 +82,13 @@ def main():
 
     channel.basic_consume(
         queue=CLIENT_TO_LONG_MATCHES_QUEUE_NAME,
-        on_message_callback=get_filter_by_duration_average_rating_and_server_function(
-            connection),
+        on_message_callback=filter_by_duration_average_rating_and_server,
         auto_ack=True # TODO sacar esto
     )
 
     print('Waiting for messages. To exit press CTRL+C')
     channel.start_consuming()
+    connection.close()
 
 if __name__ == '__main__':
     main()

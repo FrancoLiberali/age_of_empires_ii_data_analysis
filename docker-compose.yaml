@@ -18,7 +18,7 @@ services:
       dockerfile: ./client/client.dockerfile
     volumes:
       - ./client:/client
-      - ./common:/client/common
+      - ./communications:/client/communications
     restart: on-failure
     depends_on:
       - rabbitmq
@@ -33,7 +33,35 @@ services:
       dockerfile: long_matches_server.dockerfile
     volumes:
       - ./long_matches_server:/long_matches_server
-      - ./common:/long_matches_server/common
+      - ./communications:/long_matches_server/communications
+    restart: on-failure
+    depends_on:
+      - rabbitmq
+    links: 
+      - rabbitmq
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  filter_by_rating_server:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./weaker_winner_server:/filter_by_rating
+      - ./communications:/filter_by_rating/communications
+    entrypoint: python3 /filter_by_rating/filter_by_rating.py
+    restart: on-failure
+    depends_on:
+      - rabbitmq
+    links: 
+      - rabbitmq
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  group_by_match_server:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./weaker_winner_server:/group_by_match
+      - ./communications:/group_by_match/communications
+    entrypoint: python3 /group_by_match/group_by_match.py
     restart: on-failure
     depends_on:
       - rabbitmq
