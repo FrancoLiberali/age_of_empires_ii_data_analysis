@@ -23,14 +23,15 @@ services:
     networks:
       - age_of_empires_net
 
-  filter_by_rating_server:
+  group_by_match_master_server:
     image: rabbitmq-python-base:0.0.1
     volumes:
-      - ./weaker_winner_server:/filter_by_rating
-      - ./communications:/filter_by_rating/communications
-    entrypoint: python3 /filter_by_rating/filter_by_rating.py
+      - ./weaker_winner_server:/group_by_match
+      - ./communications:/group_by_match/communications
+    entrypoint: python3 /group_by_match/group_by_match_master.py
     environment:
       - PYTHONUNBUFFERED=1
+      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT}
     networks:
       - age_of_empires_net
     depends_on:
