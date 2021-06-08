@@ -23,6 +23,7 @@ def get_receive_sentinel_function(sentinel_received_amount, sentinels_objetive):
             print(f"Sentinels from group by match reducers received: {sentinel_received_amount[0]} / {sentinels_objetive}")
             if sentinel_received_amount[0] == sentinels_objetive:
                 channel.stop_consuming()
+        channel.basic_ack(delivery_tag=method.delivery_tag)
     return receive_sentinel
 
 
@@ -34,7 +35,6 @@ def receive_a_sentinel_per_reducer(channel, reducers_amount):
         on_message_callback=get_receive_sentinel_function(
             sentinel_received_amount,
             reducers_amount),
-        auto_ack=True  # TODO sacar esto
     )
     channel.start_consuming()
 
@@ -72,7 +72,6 @@ def send_sentinel_to_reducers(channel):
 
 def get_dispach_to_reducers_function(players_by_key, partition_function):
     def dispach_to_reducers(channel, method, properties, body):
-        # TODO codigo repetido lo del receive sentinel
         chunk_string = body.decode(STRING_ENCODING)
         if chunk_string == SENTINEL_MESSAGE:
             print(
@@ -89,6 +88,7 @@ def get_dispach_to_reducers_function(players_by_key, partition_function):
                 players_by_key,
                 received_players
             )
+        channel.basic_ack(delivery_tag=method.delivery_tag)
     return dispach_to_reducers
 
 
@@ -103,7 +103,6 @@ def receive_and_dispach_players(channel, partition_function, reducers_amount):
         queue=CLIENT_TO_WEAKER_WINNER_QUEUE_NAME,
         on_message_callback=get_dispach_to_reducers_function(
             players_by_key, partition_function),
-        auto_ack=True  # TODO sacar esto
     )
     print("Starting to receive players from client and dispach it to reducers by key")
     channel.start_consuming()

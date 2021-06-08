@@ -56,6 +56,7 @@ def filter_by_duration_average_rating_and_server(channel, method, properties, bo
                 matches_ids.append(columns[TOKEN_INDEX])
         if (len(matches_ids) > 0):
             send_matches_ids(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME, matches_ids)
+    channel.basic_ack(delivery_tag=method.delivery_tag)
 
 def main():
     connection = pika.BlockingConnection(
@@ -68,7 +69,6 @@ def main():
     channel.basic_consume(
         queue=CLIENT_TO_LONG_MATCHES_QUEUE_NAME,
         on_message_callback=filter_by_duration_average_rating_and_server,
-        auto_ack=True # TODO sacar esto
     )
 
     print('Starting to receive matches to filter')

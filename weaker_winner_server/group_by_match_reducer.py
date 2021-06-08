@@ -33,6 +33,7 @@ def get_group_by_match_function(players_by_match):
                 else:
                     del players_by_match[match_id]
                     players_by_match[match_id] = None # mark this match as not possible
+        channel.basic_ack(delivery_tag=method.delivery_tag)
     return group_by_match
 
 
@@ -48,6 +49,7 @@ def get_set_keys_function(keys):
             channel.stop_consuming()
         else:
             keys.append(chunk_string)
+        channel.basic_ack(delivery_tag=method.delivery_tag)
     return set_keys
 
 
@@ -56,8 +58,7 @@ def receive_keys(channel):
     keys = []
     channel.basic_consume(
         queue=GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME,
-        on_message_callback=get_set_keys_function(keys),
-        auto_ack=True  # TODO sacar esto
+        on_message_callback=get_set_keys_function(keys)
     )
     print('Waiting for keys assignement')
     channel.start_consuming()
@@ -95,7 +96,6 @@ def process_player_by_match(channel, private_queue_name, keys):
     channel.basic_consume(
         queue=private_queue_name,
         on_message_callback=get_group_by_match_function(players_by_match),
-        auto_ack=True  # TODO sacar esto
     )
     print(f'Starting to receive players in matches with keys {keys} to group them.')
 
