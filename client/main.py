@@ -110,11 +110,14 @@ def request_long_matches():
     channel.queue_declare(queue=CLIENT_TO_LONG_MATCHES_QUEUE_NAME)
     channel.queue_declare(queue=LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
 
+    print(f"Starting to send matches to server to request long matches")
     send_file_in_chunks(channel,
                         CLIENT_TO_LONG_MATCHES_QUEUE_NAME,
                         MATCHES_CSV_FILE,
                         get_line_string_for_long_matches)
+    print(f"Finished sending matches to server to request long matches")
 
+    print(f"Starting to receive ids of long matches replied")
     get_matches_ids(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME,
                     "Los IDs de matches que excedieron las dos horas de juego por pro players (average_rating > 2000) en los servers koreacentral, southeastasia y eastus son: ")
     connection.close()
@@ -127,11 +130,14 @@ def request_weaker_winner():
     channel.queue_declare(queue=CLIENT_TO_WEAKER_WINNER_QUEUE_NAME)
     channel.queue_declare(queue=WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
 
+    print(f"Starting to send players to server to request weaker winner")
     send_file_in_chunks(channel,
                         CLIENT_TO_WEAKER_WINNER_QUEUE_NAME,
                         MATCH_PLAYERS_CSV_FILE,
                         get_line_string_for_weaker_winner)
+    print(f"Finished sending matches to server to request weaker winner")
 
+    print(f"Starting to receive ids of matches with weaker winner replied")
     get_matches_ids(channel, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME,
                     "Los IDs de matches en partidas 1v1 donde el ganador tiene un rating 30 % menor al perdedor y el rating del ganador es superior a 1000 son: ")
     connection.close()

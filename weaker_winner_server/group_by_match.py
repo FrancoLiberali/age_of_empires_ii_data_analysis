@@ -18,7 +18,7 @@ def get_group_by_match_function(players_by_match):
     def group_by_match(channel, method, properties, body):
         chunk_string = body.decode(STRING_ENCODING)
         if chunk_string == SENTINEL_MESSAGE:
-            print("Sentinel message received, stoping consuming")
+            print("Sentinel message received, stoping grouping players")
             channel.stop_consuming()
         else:
             for player_string in chunk_string.split(STRING_LINE_SEPARATOR):
@@ -42,7 +42,7 @@ def get_set_keys_function(keys):
     def set_keys(channel, method, properties, body):
         chunk_string = body.decode(STRING_ENCODING)
         if chunk_string == SENTINEL_MESSAGE:
-            print("Sentinel message received, stoping wait for keys")
+            print("Sentinel message received, stoping receiving keys")
             channel.stop_consuming()
         else:
             keys.append(chunk_string)
@@ -57,14 +57,14 @@ def receive_keys(channel):
         on_message_callback=get_set_keys_function(keys),
         auto_ack=True  # TODO sacar esto
     )
-    print('Waiting for keys')
+    print('Waiting for keys assignement')
     channel.start_consuming()
     print(f'Assigned keys are: {keys}')
     return keys
 
 
 def subscribe_to_keys(channel, keys):
-    # TODO dividir un poco todo este codigo
+    print(f"Subscribing to keys: {keys}")
     channel.exchange_declare(
         exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
         exchange_type='direct')
@@ -76,6 +76,7 @@ def subscribe_to_keys(channel, keys):
             exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
             queue=private_queue_name,
             routing_key=key)
+    print(f"Finished subscribing to keys: {keys}")
     return private_queue_name
 
 def send_sentinel_to_master(channel):
@@ -83,7 +84,40 @@ def send_sentinel_to_master(channel):
     send_sentinel(channel, GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME)
 
 
+def process_player_by_match(channel, private_queue_name, keys):
+    players_by_match = {}
+    channel.basic_consume(
+        queue=private_queue_name,
+        on_message_callback=get_group_by_match_function(players_by_match),
+        auto_ack=True  # TODO sacar esto
+    )
+    print(f'Starting to receive players in matches with keys {keys} to group them.')
+
+    channel.start_consuming()
+    print(f'All players in matches with keys {keys} grouped.')
+    return players_by_match
+
+
 MINIMUM_RATING = 1000  # TODO envvar
+
+def filter_players_by_weaker_winner(players_by_match):
+    matches_ids = []
+    for match_id, players_list in players_by_match.items():
+        # final check that all matches are of two players
+        if players_list is not None and len(players_list) == 2:
+            winner = next(
+                (player for player in players_list if player[WINNER_INDEX] == WINNER))
+            loser = next(
+                (player for player in players_list if player[WINNER_INDEX] == LOSER))
+
+            if winner[RATING_INDEX] != '' and loser[RATING_INDEX] != '':
+                winner_rating = int(winner[RATING_INDEX])
+                loser_rating = int(loser[RATING_INDEX])
+                rating_diff = (loser_rating - winner_rating) / \
+                    winner_rating * 100
+                if winner_rating > MINIMUM_RATING and rating_diff > MINIMUM_RATING_PROCENTAGE_DIFF:
+                    matches_ids.append(match_id)
+    return matches_ids
 
 def main():
     connection = pika.BlockingConnection(
@@ -92,37 +126,20 @@ def main():
 
     keys = receive_keys(channel)
     private_queue_name = subscribe_to_keys(channel, keys)
+    print("Sending sentinel to master to notify ready to receive players")
     send_sentinel_to_master(channel)
 
-    players_by_match = {}
-    channel.basic_consume(
-        queue=private_queue_name,
-        on_message_callback=get_group_by_match_function(players_by_match),
-        auto_ack=True  # TODO sacar esto
-    )
-    print('Waiting for messages. To exit press CTRL+C')
+    players_by_match = process_player_by_match(channel, private_queue_name, keys)
 
-    channel.start_consuming()
-
-    matches_ids = []
-    for match_id, players_list in players_by_match.items():
-        # final check that all matches are of two players
-        if players_list is not None and len(players_list) == 2:
-            winner = next((player for player in players_list if player[WINNER_INDEX] == WINNER))
-            loser = next((player for player in players_list if player[WINNER_INDEX] == LOSER))
-
-            if winner[RATING_INDEX] != '' and loser[RATING_INDEX] != '':
-                winner_rating = int(winner[RATING_INDEX])
-                loser_rating = int(loser[RATING_INDEX])
-                rating_diff = (loser_rating - winner_rating) / winner_rating * 100
-                if winner_rating > MINIMUM_RATING and rating_diff > MINIMUM_RATING_PROCENTAGE_DIFF:
-                    matches_ids.append(match_id)
-    print(f"Matches: {matches_ids}")
+    matches_ids = filter_players_by_weaker_winner(players_by_match)
+    print(f"All matches with keys {keys} with weaker winner found")
 
     if len(matches_ids) > 0:
         channel.queue_declare(queue=WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
+        print(f"Sending matches found to client")
         send_matches_ids(channel, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME, matches_ids)
 
+    print("Sending sentinel to master to notify finished")
     send_sentinel_to_master(channel)
     connection.close()
 

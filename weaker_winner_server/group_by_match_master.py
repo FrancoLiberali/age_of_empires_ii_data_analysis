@@ -15,9 +15,7 @@ def get_send_all_reducers_finished_sentinel_function(sentinel_received_amount, s
     def send_all_reducers_finished_sentinel(channel, method, properties, body):
         if body.decode(STRING_ENCODING) == SENTINEL_MESSAGE:
             sentinel_received_amount[0] += 1
-            # TODO que sea la cantidad de reducers cuando sea configurable
-            print(
-                f"Sentinels from group by match reducers received: {sentinel_received_amount[0]} / {sentinels_objetive}")
+            print(f"Sentinels from group by match reducers received: {sentinel_received_amount[0]} / {sentinels_objetive}")
             if sentinel_received_amount[0] == sentinels_objetive:
                 channel.stop_consuming()
     return send_all_reducers_finished_sentinel
@@ -73,7 +71,7 @@ def get_dispach_to_reducers_function(players_by_key):
         chunk_string = body.decode(STRING_ENCODING)
         if chunk_string == SENTINEL_MESSAGE:
             print(
-                "Sentinel message received, stoping receive players and dispach it to reducers. Sending sentinel to reducers for aleting them than no more players will come.")
+                "Sentinel message received, stoping receive players and dispach it to reducers. Sending sentinel to reducers for alerting them than no more players will come.")
             channel.stop_consuming()
             # send the remaining players
             send_players_by_key(channel, players_by_key, False)
@@ -83,7 +81,8 @@ def get_dispach_to_reducers_function(players_by_key):
             send_to_reducers(players_by_key, channel, received_players)
     return dispach_to_reducers
 
-def receive_and_dispach_players(channel):
+
+def receive_and_dispach_players(channel, reducers_amount):
     channel.queue_declare(queue=CLIENT_TO_WEAKER_WINNER_QUEUE_NAME)
     channel.exchange_declare(
         exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
@@ -95,20 +94,21 @@ def receive_and_dispach_players(channel):
         on_message_callback=get_dispach_to_reducers_function(players_by_key),
         auto_ack=True  # TODO sacar esto
     )
+    print("Starting to receive players from client and dispach it to reducers by key")
     channel.start_consuming()
 
-def main():
-    reducers_amount = int(os.environ["REDUCERS_AMOUNT"]) # TODO usar codigo unificado cuando esté
-    posibles_keys = get_posibles_keys()
-    # TODO falta que las posibles keys dependan de la cantidad de reducers, ojo cuando hay mas reducers que keys
-    
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
+    print("Waiting for a sentinel per reducer that notifies they finished grouping")
+    receive_a_sentinel_per_reducer(channel, reducers_amount)
+
+
+def send_keys_to_reducers(channel, reducers_amount):
     channel.queue_declare(queue=GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME)
 
+    # TODO falta que las posibles keys dependan de la cantidad de reducers, ojo cuando hay mas reducers que keys
+    posibles_keys = get_posibles_keys()
     # TODO quiza esto seria mas facil hacerlo directamente en el start up, ya le pongo las keys en env a cada reducer
     # Porque ahora anda pero es medio polemico es tema de que todos los nodos esten escuchando keys solo con el depends_on, sino hay que meter otra barrera antes
+    print("Starting to send keys to reducers")
     for key in posibles_keys:
         # as it is round robin, all reducers will get equitative keys amount
         channel.basic_publish(
@@ -116,16 +116,26 @@ def main():
             routing_key=GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME,
             body=key.encode(STRING_ENCODING)
         )
+    print("All keys sended, sending sentinels to notify reducers that no more keys are going to be sended")
     for _ in range(0, reducers_amount):
         send_sentinel(channel, GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME)
 
+    print("Waiting for a sentinel per reducer that notifies they are subscribed to the corresponding keys")
     receive_a_sentinel_per_reducer(channel, reducers_amount)
-    print("Sentinels from all group by match reducers received, starting to receive players and dispach it to reducers")
 
-    receive_and_dispach_players(channel)
 
-    receive_a_sentinel_per_reducer(channel, reducers_amount)
-    print("Sentinels from all group by match reducers received, sending sentinel to client")
+def main():
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host=RABBITMQ_HOST))
+    channel = connection.channel()
+
+    reducers_amount = int(os.environ["REDUCERS_AMOUNT"]) # TODO usar codigo unificado cuando esté
+
+    send_keys_to_reducers(channel, reducers_amount)
+
+    receive_and_dispach_players(channel, reducers_amount)
+
+    print("Sending sentinel to client to notify all matches ids sended")
     channel.queue_declare(
         queue=WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
     send_sentinel(channel, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)

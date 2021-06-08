@@ -19,7 +19,7 @@ DURATION_INDEX = 3
 MINIMUM_AVERAGE_RATING = 2000 # TODO envvar
 MINIMUM_DURATION = time(hour=2)  # TODO envvar
 REQUIRED_SERVERS = ['koreacentral', 'southeastasia', 'eastus']  # TODO envvar
-DURATION_FORMAT = '%H:%M:%S'
+DURATION_FORMAT = '%H:%M:%S' # TODO envvar
 
 def is_average_rating_enough(average_rating_string):
     # TODO catchear exceptions
@@ -44,8 +44,9 @@ def is_matched(columns):
 def filter_by_duration_average_rating_and_server(channel, method, properties, body):
     chunk_string = body.decode(STRING_ENCODING)
     if chunk_string == SENTINEL_MESSAGE:
-        print("Sentinel message received, stoping consuming")
+        print("Sentinel message received, stoping receiving matches")
         channel.stop_consuming()
+        print("Sending sentinel to client to notify that all matches ids has been sended")
         send_sentinel(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
     else:
         matches_ids = []
@@ -70,7 +71,7 @@ def main():
         auto_ack=True # TODO sacar esto
     )
 
-    print('Waiting for messages. To exit press CTRL+C')
+    print('Starting to receive matches to filter')
     channel.start_consuming()
     connection.close()
 
