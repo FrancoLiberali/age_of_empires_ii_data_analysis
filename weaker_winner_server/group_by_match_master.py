@@ -1,8 +1,13 @@
 import pika
 import os
 
+from common.constants import SENTINEL_KEY
 from common.partition_function import PartitionFunction
-from communications.constants import CLIENT_TO_WEAKER_WINNER_QUEUE_NAME, FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME, GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, STRING_COLUMN_SEPARATOR, \
+from communications.constants import CLIENT_TO_WEAKER_WINNER_QUEUE_NAME, \
+    FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME, \
+    GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, \
+    GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, \
+    STRING_COLUMN_SEPARATOR, \
     STRING_ENCODING, \
     RABBITMQ_HOST, \
     SENTINEL_MESSAGE, STRING_LINE_SEPARATOR, \
@@ -59,14 +64,10 @@ def add_to_players_by_key(channel, partition_function, players_by_key, received_
     send_players_by_key(channel, players_by_key)
 
 
-def send_sentinel_to_reducers(channel, partition_function):
-    # TODO mandar uno a cada reducer no a las keys? seria mejor, el tema es que no tengo forma de mandar algo a todos los reducers ahora, este meotod sirve
-    # El problema es que me quedan mensajes encolados que nadie recibe, en las colas privadas de cada uno
-    # poner otra key que sea de sentinel y listo, asi mando uno solo y le llega a todos, soy un capooo
-    for key in partition_function.get_posibles_keys():
-        channel.basic_publish(exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
-                              routing_key=key,
-                              body=SENTINEL_MESSAGE.encode(STRING_ENCODING))
+def send_sentinel_to_reducers(channel):
+    channel.basic_publish(exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
+                          routing_key=SENTINEL_KEY,
+                          body=SENTINEL_MESSAGE.encode(STRING_ENCODING))
 
 
 def get_dispach_to_reducers_function(players_by_key, partition_function):
@@ -79,7 +80,7 @@ def get_dispach_to_reducers_function(players_by_key, partition_function):
             channel.stop_consuming()
             # send the remaining players
             send_players_by_key(channel, players_by_key, False)
-            send_sentinel_to_reducers(channel, partition_function)
+            send_sentinel_to_reducers(channel)
         else:
             received_players = [player_string for player_string in chunk_string.split(STRING_LINE_SEPARATOR)]
             add_to_players_by_key(

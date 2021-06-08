@@ -1,7 +1,9 @@
 import pika
 
-from common.constants import LOSER, MATCH_INDEX, WINNER, WINNER_INDEX, RATING_INDEX
-from communications.constants import FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME, GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, \
+from common.constants import LOSER, MATCH_INDEX, SENTINEL_KEY, WINNER, WINNER_INDEX, RATING_INDEX
+from communications.constants import FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME, \
+    GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, \
+    GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, \
     STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
@@ -76,6 +78,10 @@ def subscribe_to_keys(channel, keys):
             exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
             queue=private_queue_name,
             routing_key=key)
+    channel.queue_bind(
+        exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
+        queue=private_queue_name,
+        routing_key=SENTINEL_KEY)
     print(f"Finished subscribing to keys")
     return private_queue_name
 
