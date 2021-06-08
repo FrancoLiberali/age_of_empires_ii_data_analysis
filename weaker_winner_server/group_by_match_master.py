@@ -1,7 +1,7 @@
 import pika
 import os
 
-from common.partition_function import get_key, get_posibles_keys
+from common.partition_function import PartitionFunction
 from communications.constants import CLIENT_TO_WEAKER_WINNER_QUEUE_NAME, FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME, GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, STRING_COLUMN_SEPARATOR, \
     STRING_ENCODING, \
     RABBITMQ_HOST, \
@@ -34,11 +34,11 @@ def receive_a_sentinel_per_reducer(channel, reducers_amount):
     channel.start_consuming()
 
 
-PLAYERS_CHUNK_SIZE = 100
+PLAYERS_CHUNK_SIZE = 100 # TODO envvar, es muy importante
 
 def send_players_by_key(channel, players_by_key, check_chunk_size=True):
     for key, players in list(players_by_key.items()):
-        if check_chunk_size and len(players) > PLAYERS_CHUNK_SIZE:
+        if len(players) > PLAYERS_CHUNK_SIZE or not check_chunk_size:
             players_string = STRING_LINE_SEPARATOR.join(players)
             channel.basic_publish(exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
                                   routing_key=key,
@@ -47,9 +47,11 @@ def send_players_by_key(channel, players_by_key, check_chunk_size=True):
             del players
 
 
-def send_to_reducers(players_by_key, channel, received_players):
+def add_to_players_by_key(channel, partition_function, players_by_key, received_players):
     for player_string in received_players:
-        key = get_key(player_string.split(STRING_COLUMN_SEPARATOR))
+        key = partition_function.get_key(
+            player_string.split(STRING_COLUMN_SEPARATOR)
+        )
         rows_list = players_by_key.get(key, [])
         rows_list.append(player_string)
         players_by_key[key] = rows_list
@@ -57,15 +59,17 @@ def send_to_reducers(players_by_key, channel, received_players):
     send_players_by_key(channel, players_by_key)
 
 
-def send_sentinel_to_reducers(channel):
+def send_sentinel_to_reducers(channel, partition_function):
     # TODO mandar uno a cada reducer no a las keys? seria mejor, el tema es que no tengo forma de mandar algo a todos los reducers ahora, este meotod sirve
-    for key in get_posibles_keys():
+    # El problema es que me quedan mensajes encolados que nadie recibe, en las colas privadas de cada uno
+    # poner otra key que sea de sentinel y listo, asi mando uno solo y le llega a todos, soy un capooo
+    for key in partition_function.get_posibles_keys():
         channel.basic_publish(exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
                               routing_key=key,
                               body=SENTINEL_MESSAGE.encode(STRING_ENCODING))
 
 
-def get_dispach_to_reducers_function(players_by_key):
+def get_dispach_to_reducers_function(players_by_key, partition_function):
     def dispach_to_reducers(channel, method, properties, body):
         # TODO codigo repetido lo del receive sentinel
         chunk_string = body.decode(STRING_ENCODING)
@@ -75,14 +79,19 @@ def get_dispach_to_reducers_function(players_by_key):
             channel.stop_consuming()
             # send the remaining players
             send_players_by_key(channel, players_by_key, False)
-            send_sentinel_to_reducers(channel)
+            send_sentinel_to_reducers(channel, partition_function)
         else:
             received_players = [player_string for player_string in chunk_string.split(STRING_LINE_SEPARATOR)]
-            send_to_reducers(players_by_key, channel, received_players)
+            add_to_players_by_key(
+                channel,
+                partition_function,
+                players_by_key,
+                received_players
+            )
     return dispach_to_reducers
 
 
-def receive_and_dispach_players(channel, reducers_amount):
+def receive_and_dispach_players(channel, partition_function, reducers_amount):
     channel.queue_declare(queue=CLIENT_TO_WEAKER_WINNER_QUEUE_NAME)
     channel.exchange_declare(
         exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
@@ -91,7 +100,8 @@ def receive_and_dispach_players(channel, reducers_amount):
     players_by_key = {}
     channel.basic_consume(
         queue=CLIENT_TO_WEAKER_WINNER_QUEUE_NAME,
-        on_message_callback=get_dispach_to_reducers_function(players_by_key),
+        on_message_callback=get_dispach_to_reducers_function(
+            players_by_key, partition_function),
         auto_ack=True  # TODO sacar esto
     )
     print("Starting to receive players from client and dispach it to reducers by key")
@@ -101,14 +111,13 @@ def receive_and_dispach_players(channel, reducers_amount):
     receive_a_sentinel_per_reducer(channel, reducers_amount)
 
 
-def send_keys_to_reducers(channel, reducers_amount):
+def send_keys_to_reducers(channel, partition_function, reducers_amount):
     channel.queue_declare(queue=GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME)
 
-    # TODO falta que las posibles keys dependan de la cantidad de reducers, ojo cuando hay mas reducers que keys
-    posibles_keys = get_posibles_keys()
+    posibles_keys = partition_function.get_posibles_keys()
     # TODO quiza esto seria mas facil hacerlo directamente en el start up, ya le pongo las keys en env a cada reducer
     # Porque ahora anda pero es medio polemico es tema de que todos los nodos esten escuchando keys solo con el depends_on, sino hay que meter otra barrera antes
-    print("Starting to send keys to reducers")
+    print(f"Starting to send keys to reducers: {posibles_keys}")
     for key in posibles_keys:
         # as it is round robin, all reducers will get equitative keys amount
         channel.basic_publish(
@@ -130,10 +139,11 @@ def main():
     channel = connection.channel()
 
     reducers_amount = int(os.environ["REDUCERS_AMOUNT"]) # TODO usar codigo unificado cuando esté
+    partition_function = PartitionFunction(reducers_amount)
 
-    send_keys_to_reducers(channel, reducers_amount)
+    send_keys_to_reducers(channel, partition_function, reducers_amount)
 
-    receive_and_dispach_players(channel, reducers_amount)
+    receive_and_dispach_players(channel, partition_function, reducers_amount)
 
     print("Sending sentinel to client to notify all matches ids sended")
     channel.queue_declare(

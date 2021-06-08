@@ -66,7 +66,8 @@ def get_print_matches_ids_function(matches_ids, message):
     def print_matches_ids(channel, method, properties, body):
         received_string = body.decode(STRING_ENCODING)
         if received_string == SENTINEL_MESSAGE:
-            print(f"{message}{', '.join(matches_ids)}")
+            print(message)
+            print('\n'.join(matches_ids))
             channel.stop_consuming()
         else:
             for match_id in received_string.split(MATCHES_IDS_SEPARATOR):

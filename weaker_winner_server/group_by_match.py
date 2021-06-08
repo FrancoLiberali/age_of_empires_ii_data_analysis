@@ -64,7 +64,7 @@ def receive_keys(channel):
 
 
 def subscribe_to_keys(channel, keys):
-    print(f"Subscribing to keys: {keys}")
+    print(f"Subscribing to keys")
     channel.exchange_declare(
         exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
         exchange_type='direct')
@@ -76,7 +76,7 @@ def subscribe_to_keys(channel, keys):
             exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
             queue=private_queue_name,
             routing_key=key)
-    print(f"Finished subscribing to keys: {keys}")
+    print(f"Finished subscribing to keys")
     return private_queue_name
 
 def send_sentinel_to_master(channel):
