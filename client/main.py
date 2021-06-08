@@ -11,6 +11,7 @@ from communications.constants import CLIENT_TO_WEAKER_WINNER_QUEUE_NAME, STRING_
     LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
     RABBITMQ_HOST, \
     SENTINEL_MESSAGE, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
+from communications.rabbitmq_interface import send_sentinel, send_string_to_queue
 
 MATCHES_CSV_FILE = '/matches.csv'
 MATCH_PLAYERS_CSV_FILE = '/match_players.csv'
@@ -21,46 +22,10 @@ AVERAGE_RATING_INDEX = 5  # TODO envvar
 SERVER_INDEX = 9  # TODO envvar
 DURATION_INDEX = 10  # TODO envvar
 
-def send_chunk(channel, queue_name, chunk):
-    if len(chunk) > 0:
-        chunk_string = STRING_LINE_SEPARATOR.join(chunk)
-        channel.basic_publish(
-            exchange='',
-            routing_key=queue_name,
-            body=chunk_string.encode(STRING_ENCODING)
-        )
-
-def get_line_string_for_long_matches(line_list):
-    return STRING_COLUMN_SEPARATOR.join(
-        [
-            line_list[TOKEN_INDEX],
-            line_list[AVERAGE_RATING_INDEX],
-            line_list[SERVER_INDEX],
-            line_list[DURATION_INDEX],
-        ]
-    )
-
-MATCH_INDEX = 1 # TODO envvar
+MATCH_INDEX = 1  # TODO envvar
 RATING_INDEX = 2  # TODO envvar
 WINNER_INDEX = 6  # TODO envvar
 
-def get_line_string_for_weaker_winner(line_list):
-    return STRING_COLUMN_SEPARATOR.join(
-        [
-            line_list[MATCH_INDEX],
-            line_list[RATING_INDEX],
-            line_list[WINNER_INDEX],
-        ]
-    )
-
-def send_sentinel(channel, queue_name):
-    # TODO pasar a appeden string to queue o algo asi
-    channel.basic_publish(
-        exchange='',
-        routing_key=queue_name,
-        body=SENTINEL_MESSAGE.encode(STRING_ENCODING)
-    )
-    
 def get_print_matches_ids_function(matches_ids, message):
     # function currying in python
     def print_matches_ids(channel, method, properties, body):
@@ -87,6 +52,32 @@ def get_matches_ids(channel, queue_name, message):
     )
     channel.start_consuming()
 
+
+def send_chunk(channel, queue_name, chunk):
+    if len(chunk) > 0:
+        chunk_string = STRING_LINE_SEPARATOR.join(chunk)
+        send_string_to_queue(channel, queue_name, chunk_string)
+
+
+def get_line_string_for_long_matches(line_list):
+    return STRING_COLUMN_SEPARATOR.join(
+        [
+            line_list[TOKEN_INDEX],
+            line_list[AVERAGE_RATING_INDEX],
+            line_list[SERVER_INDEX],
+            line_list[DURATION_INDEX],
+        ]
+    )
+
+
+def get_line_string_for_weaker_winner(line_list):
+    return STRING_COLUMN_SEPARATOR.join(
+        [
+            line_list[MATCH_INDEX],
+            line_list[RATING_INDEX],
+            line_list[WINNER_INDEX],
+        ]
+    )
 
 def send_file_in_chunks(channel, queue_name, file_path, get_line_string_function):
     chunk = []

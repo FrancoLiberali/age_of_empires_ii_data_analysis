@@ -12,18 +12,18 @@ from communications.constants import CLIENT_TO_WEAKER_WINNER_QUEUE_NAME, \
     RABBITMQ_HOST, \
     SENTINEL_MESSAGE, STRING_LINE_SEPARATOR, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import send_sentinel
+from communications.rabbitmq_interface import send_sentinel, send_string_to_queue
 
 
-def get_send_all_reducers_finished_sentinel_function(sentinel_received_amount, sentinels_objetive):
+def get_receive_sentinel_function(sentinel_received_amount, sentinels_objetive):
     # python function currying
-    def send_all_reducers_finished_sentinel(channel, method, properties, body):
+    def receive_sentinel(channel, method, properties, body):
         if body.decode(STRING_ENCODING) == SENTINEL_MESSAGE:
             sentinel_received_amount[0] += 1
             print(f"Sentinels from group by match reducers received: {sentinel_received_amount[0]} / {sentinels_objetive}")
             if sentinel_received_amount[0] == sentinels_objetive:
                 channel.stop_consuming()
-    return send_all_reducers_finished_sentinel
+    return receive_sentinel
 
 
 def receive_a_sentinel_per_reducer(channel, reducers_amount):
@@ -31,7 +31,7 @@ def receive_a_sentinel_per_reducer(channel, reducers_amount):
     sentinel_received_amount = [0]  # using a list to pass by reference
     channel.basic_consume(
         queue=GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME,
-        on_message_callback=get_send_all_reducers_finished_sentinel_function(
+        on_message_callback=get_receive_sentinel_function(
             sentinel_received_amount,
             reducers_amount),
         auto_ack=True  # TODO sacar esto
@@ -121,10 +121,10 @@ def send_keys_to_reducers(channel, partition_function, reducers_amount):
     print(f"Starting to send keys to reducers: {posibles_keys}")
     for key in posibles_keys:
         # as it is round robin, all reducers will get equitative keys amount
-        channel.basic_publish(
-            exchange='',
-            routing_key=GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME,
-            body=key.encode(STRING_ENCODING)
+        send_string_to_queue(
+            channel,
+            GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME,
+            key
         )
     print("All keys sended, sending sentinels to notify reducers that no more keys are going to be sended")
     for _ in range(0, reducers_amount):
