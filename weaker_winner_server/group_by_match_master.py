@@ -116,8 +116,6 @@ def send_keys_to_reducers(channel, partition_function, reducers_amount):
     channel.queue_declare(queue=GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME)
 
     posibles_keys = partition_function.get_posibles_keys()
-    # TODO quiza esto seria mas facil hacerlo directamente en el start up, ya le pongo las keys en env a cada reducer
-    # Porque ahora anda pero es medio polemico es tema de que todos los nodos esten escuchando keys solo con el depends_on, sino hay que meter otra barrera antes
     print(f"Starting to send keys to reducers: {posibles_keys}")
     for key in posibles_keys:
         # as it is round robin, all reducers will get equitative keys amount
