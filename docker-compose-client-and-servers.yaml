@@ -14,44 +14,45 @@ services:
     depends_on:
       - filter_by_ladder_and_match
       - join_master
-      # TODO poner acá el resto que reciban la entrada
+      - long_matches_server
+      - group_by_match_master
 
-  # long_matches_server:
-    # image: rabbitmq-python-base:0.0.1
-    # volumes:
-      # - ./long_matches_server:/long_matches_server
-      # - ./communications:/long_matches_server/communications
-    # entrypoint: python3 /long_matches_server/main.py
-    # environment:
-      # - PYTHONUNBUFFERED=1
-    # networks:
-      # - age_of_empires_net
-# 
-  # group_by_match_master_server:
-    # image: rabbitmq-python-base:0.0.1
-    # volumes:
-      # - ./weaker_winner_server:/group_by_match
-      # - ./communications:/group_by_match/communications
-      # - ./partition_function:/group_by_match/partition_function
-    # entrypoint: python3 /group_by_match/group_by_match_master.py
-    # environment:
-      # - PYTHONUNBUFFERED=1
-      # - REDUCERS_AMOUNT=${REDUCERS_AMOUNT}
-    # networks:
-      # - age_of_empires_net
-    # depends_on:
-      # - group_by_match_reducer_server
-# 
-  # group_by_match_reducer_server:
-    # image: rabbitmq-python-base:0.0.1
-    # volumes:
-      # - ./weaker_winner_server:/group_by_match_reducer
-      # - ./communications:/group_by_match_reducer/communications
-    # entrypoint: python3 /group_by_match_reducer/group_by_match_reducer.py
-    # environment:
-      # - PYTHONUNBUFFERED=1
-    # networks:
-      # - age_of_empires_net
+  long_matches_server:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./long_matches_server:/long_matches_server
+      - ./communications:/long_matches_server/communications
+    entrypoint: python3 /long_matches_server/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - age_of_empires_net
+
+  group_by_match_master:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./weaker_winner_server:/group_by_match
+      - ./communications:/group_by_match/communications
+      - ./partition_function:/group_by_match/partition_function
+    entrypoint: python3 /group_by_match/group_by_match_master.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT}
+    networks:
+      - age_of_empires_net
+    depends_on:
+      - group_by_match_reducer
+
+  group_by_match_reducer:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./weaker_winner_server:/group_by_match_reducer
+      - ./communications:/group_by_match_reducer/communications
+    entrypoint: python3 /group_by_match_reducer/group_by_match_reducer.py
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - age_of_empires_net
 
   filter_by_ladder_and_match:
     image: rabbitmq-python-base:0.0.1

@@ -200,20 +200,20 @@ def main():
     send_matches_th.join()
     send_players_th.join()
 
-    # receive_long_matches_ids_th = threading.Thread(
-        # target=receive_long_matches_ids)
-    # receive_long_matches_ids_th.start()
+    receive_long_matches_ids_th = threading.Thread(
+        target=receive_long_matches_ids)
+    receive_long_matches_ids_th.start()
 
-    # receive_weaker_winner_matches_ids_th = threading.Thread(
-        # target=receive_weaker_winner_matches_ids)
-    # receive_weaker_winner_matches_ids_th.start()
+    receive_weaker_winner_matches_ids_th = threading.Thread(
+        target=receive_weaker_winner_matches_ids)
+    receive_weaker_winner_matches_ids_th.start()
 
     receive_winner_rate_by_civ_th = threading.Thread(
         target=receive_winner_rate_by_civ)
     receive_winner_rate_by_civ_th.start()
-    # 
-    # receive_long_matches_ids_th.join()
-    # receive_weaker_winner_matches_ids_th.join()
+
+    receive_long_matches_ids_th.join()
+    receive_weaker_winner_matches_ids_th.join()
     receive_winner_rate_by_civ_th.join()
 
 if __name__ == '__main__':

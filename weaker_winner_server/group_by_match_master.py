@@ -1,8 +1,8 @@
 import pika
 import os
 
-from common.constants import MATCH_INDEX
-from communications.constants import GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
+from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
+    GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, \
     GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, \
     PLAYERS_FANOUT_EXCHANGE_NAME, \
@@ -56,7 +56,8 @@ def send_players_by_key(channel, players_by_key, check_chunk_size=True):
 def add_to_players_by_key(channel, partition_function, players_by_key, received_players):
     for player_string in received_players:
         key = partition_function.get_key(
-            player_string.split(STRING_COLUMN_SEPARATOR)[MATCH_INDEX]
+            player_string.split(STRING_COLUMN_SEPARATOR)[
+                FROM_CLIENT_PLAYER_MATCH_INDEX]
         )
         rows_list = players_by_key.get(key, [])
         rows_list.append(player_string)
@@ -93,16 +94,7 @@ def get_dispach_to_reducers_function(players_by_key, partition_function):
     return dispach_to_reducers
 
 
-def receive_and_dispach_players(channel, partition_function, reducers_amount):
-    channel.exchange_declare(
-        exchange=PLAYERS_FANOUT_EXCHANGE_NAME,
-        exchange_type='fanout')
-    result = channel.queue_declare(queue='')
-    private_queue_name = result.method.queue
-    channel.queue_bind(
-        exchange=PLAYERS_FANOUT_EXCHANGE_NAME,
-        queue=private_queue_name)
-
+def receive_and_dispach_players(channel, private_queue_name, partition_function, reducers_amount):
     channel.exchange_declare(
         exchange=GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME,
         exchange_type='direct')
@@ -142,17 +134,33 @@ def send_keys_to_reducers(channel, partition_function, reducers_amount):
     receive_a_sentinel_per_reducer(channel, reducers_amount)
 
 
+def subscribe_to_entries(channel):
+    channel.exchange_declare(
+        exchange=PLAYERS_FANOUT_EXCHANGE_NAME,
+        exchange_type='fanout')
+    result = channel.queue_declare(queue='groupbymatch')  # TODO poner anonima
+    private_queue_name = result.method.queue
+    channel.queue_bind(
+        exchange=PLAYERS_FANOUT_EXCHANGE_NAME,
+        queue=private_queue_name)
+
+    return private_queue_name
+
+
 def main():
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host=RABBITMQ_HOST))
     channel = connection.channel()
+
+    private_queue_name = subscribe_to_entries(channel)
 
     reducers_amount = int(os.environ["REDUCERS_AMOUNT"]) # TODO usar codigo unificado cuando esté
     partition_function = PartitionFunction(reducers_amount)
 
     send_keys_to_reducers(channel, partition_function, reducers_amount)
 
-    receive_and_dispach_players(channel, partition_function, reducers_amount)
+    receive_and_dispach_players(
+        channel, private_queue_name, partition_function, reducers_amount)
 
     print("Sending sentinel to client to notify all matches ids sended")
     channel.queue_declare(

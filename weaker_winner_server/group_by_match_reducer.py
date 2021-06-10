@@ -16,7 +16,7 @@ from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
 from communications.rabbitmq_interface import send_matches_ids, send_sentinel_to_queue
 
 def can_match_be_1_vs_1(players_list, new_player):
-    return (players_list is not None and (len(players_list) == 0 or (len(players_list) == 1 and players_list[0][FROM_CLIENT_PLAYER_WINNER_INDEX] != new_player[WINNER_INDEX])))
+    return (players_list is not None and (len(players_list) == 0 or (len(players_list) == 1 and players_list[0][FROM_CLIENT_PLAYER_WINNER_INDEX] != new_player[FROM_CLIENT_PLAYER_WINNER_INDEX])))
 
 def get_group_by_match_function(players_by_match):
     # python function currying
