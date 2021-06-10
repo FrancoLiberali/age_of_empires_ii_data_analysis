@@ -1,8 +1,6 @@
 import string
 from itertools import permutations
 
-from common.constants import MATCH_INDEX
-
 class PartitionFunction:
     def __init__(self, reducers_amount):
         self.reducers_amount = reducers_amount
@@ -19,5 +17,5 @@ class PartitionFunction:
         else:
             return permutations_list
 
-    def get_key(self, match_player_row):
-        return match_player_row[MATCH_INDEX][0:self.characters_per_key]
+    def get_key(self, match_token):
+        return match_token[0:self.characters_per_key]

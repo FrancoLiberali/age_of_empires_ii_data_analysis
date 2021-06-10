@@ -2,7 +2,11 @@
 import pika
 from datetime import datetime, time
 
-from communications.constants import STRING_ENCODING, \
+from communications.constants import FROM_CLIENT_MATCH_AVERAGE_RATING_INDEX, \
+    FROM_CLIENT_MATCH_DURATION_INDEX, \
+    FROM_CLIENT_MATCH_SERVER_INDEX, \
+    FROM_CLIENT_MATCH_TOKEN_INDEX, \
+    STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
     MATCHES_FANOUT_EXCHANGE_NAME, \
@@ -10,11 +14,6 @@ from communications.constants import STRING_ENCODING, \
     RABBITMQ_HOST, \
     SENTINEL_MESSAGE
 from communications.rabbitmq_interface import send_matches_ids, send_sentinel_to_queue
-
-TOKEN_INDEX = 0
-AVERAGE_RATING_INDEX = 1
-SERVER_INDEX = 2
-DURATION_INDEX = 3
 
 MINIMUM_AVERAGE_RATING = 2000 # TODO envvar
 MINIMUM_DURATION = time(hour=2)  # TODO envvar
@@ -36,9 +35,11 @@ def is_duration_enough(duration_string):
             return False
 
 def is_matched(columns):
-    return (is_average_rating_enough(columns[AVERAGE_RATING_INDEX]) and \
-        columns[SERVER_INDEX] in REQUIRED_SERVERS and \
-        is_duration_enough(columns[DURATION_INDEX]))
+    return (
+        is_average_rating_enough(columns[FROM_CLIENT_MATCH_AVERAGE_RATING_INDEX]) and
+        columns[FROM_CLIENT_MATCH_SERVER_INDEX] in REQUIRED_SERVERS and
+        is_duration_enough(columns[FROM_CLIENT_MATCH_DURATION_INDEX])
+    )
 
 
 def filter_by_duration_average_rating_and_server(channel, method, properties, body):
@@ -53,7 +54,7 @@ def filter_by_duration_average_rating_and_server(channel, method, properties, bo
         for row in chunk_string.split(STRING_LINE_SEPARATOR):
             columns = row.split(STRING_COLUMN_SEPARATOR)
             if is_matched(columns):
-                matches_ids.append(columns[TOKEN_INDEX])
+                matches_ids.append(columns[FROM_CLIENT_MATCH_TOKEN_INDEX])
         if (len(matches_ids) > 0):
             send_matches_ids(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME, matches_ids)
     channel.basic_ack(delivery_tag=method.delivery_tag)

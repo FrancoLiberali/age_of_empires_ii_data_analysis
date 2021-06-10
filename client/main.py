@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from communications.rabbitmq_interface import send_sentinel_to_exchange, send_string_to_exchange
 import csv
 import pika
 import threading
@@ -17,14 +18,17 @@ MATCHES_CSV_FILE = '/matches.csv'
 MATCH_PLAYERS_CSV_FILE = '/match_players.csv'
 CHUCKSIZE_IN_LINES = 100
 
-TOKEN_INDEX = 0 # TODO envvar
-AVERAGE_RATING_INDEX = 5  # TODO envvar
-SERVER_INDEX = 9  # TODO envvar
-DURATION_INDEX = 10  # TODO envvar
+ENTRY_MATCH_TOKEN_INDEX = 0 # TODO envvar
+ENTRY_MATCH_AVERAGE_RATING_INDEX = 5  # TODO envvar
+ENTRY_MATCH_SERVER_INDEX = 9  # TODO envvar
+ENTRY_MATCH_DURATION_INDEX = 10  # TODO envvar
+ENTRY_MATCH_LADDER_INDEX = 3  # TODO envvar
+ENTRY_MATCH_MAP_INDEX = 6  # TODO envvar
+ENTRY_MATCH_MIRROR_INDEX = 2  # TODO envvar
 
-MATCH_INDEX = 1  # TODO envvar
-RATING_INDEX = 2  # TODO envvar
-WINNER_INDEX = 6  # TODO envvar
+ENTRY_PLAYER_MATCH_INDEX = 1  # TODO envvar
+ENTRY_PLAYER_RATING_INDEX = 2  # TODO envvar
+ENTRY_PLAYER_WINNER_INDEX = 6  # TODO envvar
 
 def get_print_matches_ids_function(matches_ids, message):
     # function currying in python
@@ -53,41 +57,32 @@ def get_matches_ids(channel, queue_name, message):
     channel.start_consuming()
 
 
-def send_string_to_exchange(channel, exchange_name, message):
-    channel.basic_publish(
-        exchange=exchange_name,
-        routing_key='',
-        body=message.encode(STRING_ENCODING)
-    )
-
-
-def send_sentinel_to_exchange(channel, exchange_name):
-    send_string_to_exchange(channel, exchange_name, SENTINEL_MESSAGE)
-
-
 def send_chunk(channel, exchange_name, chunk):
     if len(chunk) > 0:
         chunk_string = STRING_LINE_SEPARATOR.join(chunk)
         send_string_to_exchange(channel, exchange_name, chunk_string)
 
 
-def get_line_string_for_long_matches(line_list):
+def get_line_string_for_matches(line_list):
     return STRING_COLUMN_SEPARATOR.join(
         [
-            line_list[TOKEN_INDEX],
-            line_list[AVERAGE_RATING_INDEX],
-            line_list[SERVER_INDEX],
-            line_list[DURATION_INDEX],
+            line_list[ENTRY_MATCH_TOKEN_INDEX],
+            line_list[ENTRY_MATCH_AVERAGE_RATING_INDEX],
+            line_list[ENTRY_MATCH_SERVER_INDEX],
+            line_list[ENTRY_MATCH_DURATION_INDEX],
+            line_list[ENTRY_MATCH_LADDER_INDEX],
+            line_list[ENTRY_MATCH_MAP_INDEX],
+            line_list[ENTRY_MATCH_MIRROR_INDEX],
         ]
     )
 
 
-def get_line_string_for_weaker_winner(line_list):
+def get_line_string_for_players(line_list):
     return STRING_COLUMN_SEPARATOR.join(
         [
-            line_list[MATCH_INDEX],
-            line_list[RATING_INDEX],
-            line_list[WINNER_INDEX],
+            line_list[ENTRY_PLAYER_MATCH_INDEX],
+            line_list[ENTRY_PLAYER_RATING_INDEX],
+            line_list[ENTRY_PLAYER_WINNER_INDEX],
         ]
     )
 
@@ -108,21 +103,28 @@ def send_file_in_chunks(channel, exchange_name, file_path, get_line_string_funct
         send_sentinel_to_exchange(channel, exchange_name)
 
 
-def request_long_matches():
+def send_matches():
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host=RABBITMQ_HOST))
     channel = connection.channel()
     channel.exchange_declare(
         exchange=MATCHES_FANOUT_EXCHANGE_NAME,
         exchange_type='fanout')
-    channel.queue_declare(queue=LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
 
-    print(f"Starting to send matches to server to request long matches")
+    print(f"Starting to send matches to server")
     send_file_in_chunks(channel,
                         MATCHES_FANOUT_EXCHANGE_NAME,
                         MATCHES_CSV_FILE,
-                        get_line_string_for_long_matches)
-    print(f"Finished sending matches to server to request long matches")
+                        get_line_string_for_matches)
+    print(f"Finished sending matches to server")
+    connection.close()
+
+
+def receive_long_matches_ids():
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host=RABBITMQ_HOST))
+    channel = connection.channel()
+    channel.queue_declare(queue=LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
 
     print(f"Starting to receive ids of long matches replied")
     get_matches_ids(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME,
@@ -130,21 +132,28 @@ def request_long_matches():
     connection.close()
 
 
-def request_weaker_winner():
+def send_players():
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host=RABBITMQ_HOST))
     channel = connection.channel()
     channel.exchange_declare(
         exchange=PLAYERS_FANOUT_EXCHANGE_NAME,
         exchange_type='fanout')
-    channel.queue_declare(queue=WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
 
-    print(f"Starting to send players to server to request weaker winner")
+    print(f"Starting to send players to server")
     send_file_in_chunks(channel,
                         PLAYERS_FANOUT_EXCHANGE_NAME,
                         MATCH_PLAYERS_CSV_FILE,
-                        get_line_string_for_weaker_winner)
-    print(f"Finished sending matches to server to request weaker winner")
+                        get_line_string_for_players)
+    print(f"Finished sending matches to server")
+    connection.close()
+
+
+def receive_weaker_winner_matches_ids():
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host=RABBITMQ_HOST))
+    channel = connection.channel()
+    channel.queue_declare(queue=WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
 
     print(f"Starting to receive ids of matches with weaker winner replied")
     get_matches_ids(channel, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME,
@@ -152,16 +161,27 @@ def request_weaker_winner():
     connection.close()
 
 def main():
-    long_matches_client = threading.Thread(
-        target=request_long_matches)
-    long_matches_client.start()
+    send_matches_th = threading.Thread(
+        target=send_matches)
+    send_matches_th.start()
     
-    weaker_winner_client = threading.Thread(
-        target=request_weaker_winner)
-    weaker_winner_client.start()
+    send_players_th = threading.Thread(
+        target=send_players)
+    send_players_th.start()
 
-    long_matches_client.join()
-    weaker_winner_client.join()
+    send_matches_th.join()
+    send_players_th.join()
+
+    # receive_long_matches_ids_th = threading.Thread(
+        # target=receive_long_matches_ids)
+    # receive_long_matches_ids_th.start()
+
+    # receive_weaker_winner_matches_ids_th = threading.Thread(
+        # target=receive_weaker_winner_matches_ids)
+    # receive_weaker_winner_matches_ids_th.start()
+    # 
+    # receive_long_matches_ids_th.join()
+    # receive_weaker_winner_matches_ids_th.join()
 
 if __name__ == '__main__':
     main()

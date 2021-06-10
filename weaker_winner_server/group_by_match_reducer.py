@@ -1,9 +1,12 @@
 import pika
 
-from common.constants import LOSER, MATCH_INDEX, SENTINEL_KEY, WINNER, WINNER_INDEX, RATING_INDEX
-from communications.constants import FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME, \
+from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
+    FROM_CLIENT_PLAYER_RATING_INDEX, \
+    FROM_CLIENT_PLAYER_WINNER_INDEX, \
+    GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, \
     GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, \
+    SENTINEL_KEY, \
     STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
@@ -12,8 +15,11 @@ from communications.constants import FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
 from communications.rabbitmq_interface import send_matches_ids, send_sentinel_to_queue
 
+WINNER = "True"
+LOSER = "False"
+
 def can_match_be_1_vs_1(players_list, new_player):
-    return (players_list is not None and (len(players_list) == 0 or (len(players_list) == 1 and players_list[0][WINNER_INDEX] != new_player[WINNER_INDEX])))
+    return (players_list is not None and (len(players_list) == 0 or (len(players_list) == 1 and players_list[0][FROM_CLIENT_PLAYER_WINNER_INDEX] != new_player[WINNER_INDEX])))
 
 def get_group_by_match_function(players_by_match):
     # python function currying
@@ -25,7 +31,7 @@ def get_group_by_match_function(players_by_match):
         else:
             for player_string in chunk_string.split(STRING_LINE_SEPARATOR):
                 player_columns = player_string.split(STRING_COLUMN_SEPARATOR)
-                match_id = player_columns[MATCH_INDEX]
+                match_id = player_columns[FROM_CLIENT_PLAYER_MATCH_INDEX]
                 players_of_match = players_by_match.get(match_id, [])
                 if can_match_be_1_vs_1(players_of_match, player_columns):
                     players_of_match.append(player_columns)
@@ -69,18 +75,18 @@ def receive_keys(channel):
 def subscribe_to_keys(channel, keys):
     print(f"Subscribing to keys")
     channel.exchange_declare(
-        exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
+        exchange=GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME,
         exchange_type='direct')
 
     result = channel.queue_declare(queue='')
     private_queue_name = result.method.queue
     for key in keys:
         channel.queue_bind(
-            exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
+            exchange=GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME,
             queue=private_queue_name,
             routing_key=key)
     channel.queue_bind(
-        exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
+        exchange=GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME,
         queue=private_queue_name,
         routing_key=SENTINEL_KEY)
     print(f"Finished subscribing to keys")
@@ -112,13 +118,13 @@ def filter_players_by_weaker_winner(players_by_match):
         # final check that all matches are of two players
         if players_list is not None and len(players_list) == 2:
             winner = next(
-                (player for player in players_list if player[WINNER_INDEX] == WINNER))
+                (player for player in players_list if player[FROM_CLIENT_PLAYER_WINNER_INDEX] == WINNER))
             loser = next(
-                (player for player in players_list if player[WINNER_INDEX] == LOSER))
+                (player for player in players_list if player[FROM_CLIENT_PLAYER_WINNER_INDEX] == LOSER))
 
-            if winner[RATING_INDEX] != '' and loser[RATING_INDEX] != '':
-                winner_rating = int(winner[RATING_INDEX])
-                loser_rating = int(loser[RATING_INDEX])
+            if winner[FROM_CLIENT_PLAYER_RATING_INDEX] != '' and loser[FROM_CLIENT_PLAYER_RATING_INDEX] != '':
+                winner_rating = int(winner[FROM_CLIENT_PLAYER_RATING_INDEX])
+                loser_rating = int(loser[FROM_CLIENT_PLAYER_RATING_INDEX])
                 rating_diff = (loser_rating - winner_rating) / \
                     winner_rating * 100
                 if winner_rating > MINIMUM_RATING and rating_diff > MINIMUM_RATING_PROCENTAGE_DIFF:

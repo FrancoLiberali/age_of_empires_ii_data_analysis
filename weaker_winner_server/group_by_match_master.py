@@ -1,9 +1,8 @@
 import pika
 import os
 
-from common.constants import SENTINEL_KEY
-from common.partition_function import PartitionFunction
-from communications.constants import FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME, \
+from common.constants import MATCH_INDEX
+from communications.constants import GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, \
     GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, \
     PLAYERS_FANOUT_EXCHANGE_NAME, \
@@ -11,8 +10,10 @@ from communications.constants import FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
     STRING_ENCODING, \
     RABBITMQ_HOST, \
     SENTINEL_MESSAGE, STRING_LINE_SEPARATOR, \
-    WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
+    WEAKER_WINNER_TO_CLIENT_QUEUE_NAME, \
+    SENTINEL_KEY
 from communications.rabbitmq_interface import send_sentinel_to_queue, send_string_to_queue
+from partition_function.partition_function import PartitionFunction
 
 
 def get_receive_sentinel_function(sentinel_received_amount, sentinels_objetive):
@@ -45,7 +46,7 @@ def send_players_by_key(channel, players_by_key, check_chunk_size=True):
     for key, players in list(players_by_key.items()):
         if len(players) > PLAYERS_CHUNK_SIZE or not check_chunk_size:
             players_string = STRING_LINE_SEPARATOR.join(players)
-            channel.basic_publish(exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
+            channel.basic_publish(exchange=GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME,
                                   routing_key=key,
                                   body=players_string.encode(STRING_ENCODING))
             players_by_key.pop(key)
@@ -55,7 +56,7 @@ def send_players_by_key(channel, players_by_key, check_chunk_size=True):
 def add_to_players_by_key(channel, partition_function, players_by_key, received_players):
     for player_string in received_players:
         key = partition_function.get_key(
-            player_string.split(STRING_COLUMN_SEPARATOR)
+            player_string.split(STRING_COLUMN_SEPARATOR)[MATCH_INDEX]
         )
         rows_list = players_by_key.get(key, [])
         rows_list.append(player_string)
@@ -65,7 +66,7 @@ def add_to_players_by_key(channel, partition_function, players_by_key, received_
 
 # TODO unificar con el client
 def send_sentinel_to_reducers(channel):
-    channel.basic_publish(exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
+    channel.basic_publish(exchange=GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME,
                           routing_key=SENTINEL_KEY,
                           body=SENTINEL_MESSAGE.encode(STRING_ENCODING))
 
@@ -103,7 +104,7 @@ def receive_and_dispach_players(channel, partition_function, reducers_amount):
         queue=private_queue_name)
 
     channel.exchange_declare(
-        exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
+        exchange=GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME,
         exchange_type='direct')
 
     players_by_key = {}
