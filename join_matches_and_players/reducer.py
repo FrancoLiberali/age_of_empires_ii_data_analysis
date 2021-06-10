@@ -1,11 +1,11 @@
 import pika
 
-from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
+from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, FROM_CLIENT_PLAYER_CIV_INDEX, FROM_CLIENT_PLAYER_MATCH_INDEX, \
     FROM_CLIENT_PLAYER_RATING_INDEX, \
     FROM_CLIENT_PLAYER_WINNER_INDEX, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, \
-    GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, JOIN_MASTER_TO_REDUCERS_EXCHANGE_NAME, JOIN_MASTER_TO_REDUCERS_QUEUE_NAME, JOIN_REDUCERS_BARRIER_QUEUE_NAME, \
+    GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, JOIN_MASTER_TO_REDUCERS_EXCHANGE_NAME, JOIN_MASTER_TO_REDUCERS_QUEUE_NAME, JOIN_REDUCERS_BARRIER_QUEUE_NAME, JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX, JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, \
     SENTINEL_KEY, \
     STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
@@ -69,18 +69,73 @@ def send_sentinel_to_master(channel):
     send_sentinel_to_queue(channel, BARRIER_QUEUE_NAME)
 
 
-# def process_player_by_match(channel, private_queue_name, keys):
-    # players_by_match = {}
-    # channel.basic_consume(
-        # queue=private_queue_name,
-        # on_message_callback=get_group_by_match_function(players_by_match),
-    # )
-    # print(
-        # f'Starting to receive players in matches with keys {keys} to group them.')
-# 
-    # channel.start_consuming()
-    # print(f'All players in matches with keys {keys} grouped.')
-    # return players_by_match
+def filter_received_players_by_matches(players_rows, players_by_match, matches):
+    for player_string in players_rows:
+        player_columns = player_string.split(
+             STRING_COLUMN_SEPARATOR)
+        match_id = player_columns[FROM_CLIENT_PLAYER_MATCH_INDEX]
+        # match no represent in matches
+        if matches.get(match_id, None) is None:
+            # store players and wait that match to arrive
+            players_of_match = players_by_match.get(match_id, [])
+            players_of_match.append(
+                [
+                    player_columns[FROM_CLIENT_PLAYER_WINNER_INDEX],
+                    player_columns[FROM_CLIENT_PLAYER_CIV_INDEX],
+                ]
+            )
+            players_by_match[match_id] = players_of_match
+        else:
+            print("ya estaba el match, mandar players a groupby")
+
+
+MATCH_PRESENT = 1
+
+def find_players_by_received_matches(matches_rows, players_by_match, matches):
+    for match_string in matches_rows:
+        match_columns = match_string.split(
+            STRING_COLUMN_SEPARATOR)
+        match_id = match_columns[FROM_CLIENT_MATCH_TOKEN_INDEX]
+        # store match and wait that players of that match to arrive
+        matches[match_id] = MATCH_PRESENT
+        if players_by_match.get(match_id, None) is not None:
+            # recordar deletear los players
+            print("ya estaban los players, mandar players a groupby")
+
+def get_filter_players_in_matches_function(players_by_match, matches):
+    # python function currying
+    def filter_players_in_matches(channel, method, properties, body):
+        chunk_string = body.decode(STRING_ENCODING)
+        if chunk_string == SENTINEL_MESSAGE:
+            print("Sentinel message received, stoping joining players and matches")
+            channel.stop_consuming()
+        else:
+            chunk_rows = chunk_string.split(STRING_LINE_SEPARATOR)
+            identificator = chunk_rows.pop(
+                JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX)
+            if identificator == JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR:
+                filter_received_players_by_matches(
+                    chunk_rows, players_by_match, matches)
+            elif identificator == JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR:
+                find_players_by_received_matches(
+                    chunk_rows, players_by_match, matches)
+        channel.basic_ack(delivery_tag=method.delivery_tag)
+    return filter_players_in_matches
+
+def join_players_and_matches(channel, private_queue_name, keys):
+    players_by_match = {}
+    matches = {}
+    channel.basic_consume(
+        queue=private_queue_name,
+        on_message_callback=get_filter_players_in_matches_function(
+            players_by_match, matches),
+    )
+    print(
+        f'Starting to receive players and matches in matches with keys {keys} to join them.')
+
+    channel.start_consuming()
+    print(f'All players and matches in matches with keys {keys} joined.')
+    return players_by_match
 
 
 # MINIMUM_RATING = 1000  # TODO envvar
@@ -116,8 +171,7 @@ def main():
     print("Sending sentinel to master to notify ready to receive players")
     send_sentinel_to_master(channel)
 
-    # players_by_match = process_player_by_match(
-        # channel, private_queue_name, keys)
+    join_players_and_matches(channel, private_queue_name, keys)
 # 
     # matches_ids = filter_players_by_weaker_winner(players_by_match)
     # print(f"All matches with keys {keys} with weaker winner found")

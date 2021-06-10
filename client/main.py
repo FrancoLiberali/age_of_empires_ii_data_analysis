@@ -29,6 +29,7 @@ ENTRY_MATCH_MIRROR_INDEX = 2  # TODO envvar
 ENTRY_PLAYER_MATCH_INDEX = 1  # TODO envvar
 ENTRY_PLAYER_RATING_INDEX = 2  # TODO envvar
 ENTRY_PLAYER_WINNER_INDEX = 6  # TODO envvar
+ENTRY_PLAYER_CIV_INDEX = 4 # TODO envvar
 
 def get_print_matches_ids_function(matches_ids, message):
     # function currying in python
@@ -83,6 +84,7 @@ def get_line_string_for_players(line_list):
             line_list[ENTRY_PLAYER_MATCH_INDEX],
             line_list[ENTRY_PLAYER_RATING_INDEX],
             line_list[ENTRY_PLAYER_WINNER_INDEX],
+            line_list[ENTRY_PLAYER_CIV_INDEX],
         ]
     )
 
