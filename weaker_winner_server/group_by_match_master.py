@@ -3,16 +3,16 @@ import os
 
 from common.constants import SENTINEL_KEY
 from common.partition_function import PartitionFunction
-from communications.constants import CLIENT_TO_WEAKER_WINNER_QUEUE_NAME, \
-    FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME, \
+from communications.constants import FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, \
     GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, \
+    PLAYERS_FANOUT_EXCHANGE_NAME, \
     STRING_COLUMN_SEPARATOR, \
     STRING_ENCODING, \
     RABBITMQ_HOST, \
     SENTINEL_MESSAGE, STRING_LINE_SEPARATOR, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import send_sentinel, send_string_to_queue
+from communications.rabbitmq_interface import send_sentinel_to_queue, send_string_to_queue
 
 
 def get_receive_sentinel_function(sentinel_received_amount, sentinels_objetive):
@@ -63,7 +63,7 @@ def add_to_players_by_key(channel, partition_function, players_by_key, received_
 
     send_players_by_key(channel, players_by_key)
 
-
+# TODO unificar con el client
 def send_sentinel_to_reducers(channel):
     channel.basic_publish(exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
                           routing_key=SENTINEL_KEY,
@@ -93,14 +93,22 @@ def get_dispach_to_reducers_function(players_by_key, partition_function):
 
 
 def receive_and_dispach_players(channel, partition_function, reducers_amount):
-    channel.queue_declare(queue=CLIENT_TO_WEAKER_WINNER_QUEUE_NAME)
+    channel.exchange_declare(
+        exchange=PLAYERS_FANOUT_EXCHANGE_NAME,
+        exchange_type='fanout')
+    result = channel.queue_declare(queue='')
+    private_queue_name = result.method.queue
+    channel.queue_bind(
+        exchange=PLAYERS_FANOUT_EXCHANGE_NAME,
+        queue=private_queue_name)
+
     channel.exchange_declare(
         exchange=FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
         exchange_type='direct')
 
     players_by_key = {}
     channel.basic_consume(
-        queue=CLIENT_TO_WEAKER_WINNER_QUEUE_NAME,
+        queue=private_queue_name,
         on_message_callback=get_dispach_to_reducers_function(
             players_by_key, partition_function),
     )
@@ -127,7 +135,7 @@ def send_keys_to_reducers(channel, partition_function, reducers_amount):
         )
     print("All keys sended, sending sentinels to notify reducers that no more keys are going to be sended")
     for _ in range(0, reducers_amount):
-        send_sentinel(channel, GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME)
+        send_sentinel_to_queue(channel, GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME)
 
     print("Waiting for a sentinel per reducer that notifies they are subscribed to the corresponding keys")
     receive_a_sentinel_per_reducer(channel, reducers_amount)
@@ -148,7 +156,7 @@ def main():
     print("Sending sentinel to client to notify all matches ids sended")
     channel.queue_declare(
         queue=WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
-    send_sentinel(channel, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
+    send_sentinel_to_queue(channel, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
 
     connection.close()
 

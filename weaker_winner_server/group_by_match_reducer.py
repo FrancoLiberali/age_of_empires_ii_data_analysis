@@ -10,7 +10,7 @@ from communications.constants import FILTER_BY_RATING_TO_GROUP_BY_EXCHANGE_NAME,
     RABBITMQ_HOST, \
     SENTINEL_MESSAGE, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import send_matches_ids, send_sentinel
+from communications.rabbitmq_interface import send_matches_ids, send_sentinel_to_queue
 
 def can_match_be_1_vs_1(players_list, new_player):
     return (players_list is not None and (len(players_list) == 0 or (len(players_list) == 1 and players_list[0][WINNER_INDEX] != new_player[WINNER_INDEX])))
@@ -88,7 +88,7 @@ def subscribe_to_keys(channel, keys):
 
 def send_sentinel_to_master(channel):
     channel.queue_declare(queue=GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME)
-    send_sentinel(channel, GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME)
+    send_sentinel_to_queue(channel, GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME)
 
 
 def process_player_by_match(channel, private_queue_name, keys):

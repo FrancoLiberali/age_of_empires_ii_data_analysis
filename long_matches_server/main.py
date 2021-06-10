@@ -5,11 +5,11 @@ from datetime import datetime, time
 from communications.constants import STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
-    CLIENT_TO_LONG_MATCHES_QUEUE_NAME, \
+    MATCHES_FANOUT_EXCHANGE_NAME, \
     LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
     RABBITMQ_HOST, \
     SENTINEL_MESSAGE
-from communications.rabbitmq_interface import send_matches_ids, send_sentinel
+from communications.rabbitmq_interface import send_matches_ids, send_sentinel_to_queue
 
 TOKEN_INDEX = 0
 AVERAGE_RATING_INDEX = 1
@@ -47,7 +47,7 @@ def filter_by_duration_average_rating_and_server(channel, method, properties, bo
         print("Sentinel message received, stoping receiving matches")
         channel.stop_consuming()
         print("Sending sentinel to client to notify that all matches ids has been sended")
-        send_sentinel(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
+        send_sentinel_to_queue(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
     else:
         matches_ids = []
         for row in chunk_string.split(STRING_LINE_SEPARATOR):
@@ -63,11 +63,21 @@ def main():
         pika.ConnectionParameters(host=RABBITMQ_HOST))
 
     channel = connection.channel()
-    channel.queue_declare(queue=CLIENT_TO_LONG_MATCHES_QUEUE_NAME)
+
+    channel.exchange_declare(
+        exchange=MATCHES_FANOUT_EXCHANGE_NAME,
+        exchange_type='fanout')
+    result = channel.queue_declare(queue='')
+    private_queue_name = result.method.queue
+    channel.queue_bind(
+        exchange=MATCHES_FANOUT_EXCHANGE_NAME,
+        queue=private_queue_name
+    )
+
     channel.queue_declare(queue=LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
 
     channel.basic_consume(
-        queue=CLIENT_TO_LONG_MATCHES_QUEUE_NAME,
+        queue=private_queue_name,
         on_message_callback=filter_by_duration_average_rating_and_server,
     )
 

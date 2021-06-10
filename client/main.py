@@ -3,15 +3,15 @@ import csv
 import pika
 import threading
 
-from communications.constants import CLIENT_TO_WEAKER_WINNER_QUEUE_NAME, STRING_ENCODING, \
+from communications.constants import MATCHES_FANOUT_EXCHANGE_NAME, \
+    PLAYERS_FANOUT_EXCHANGE_NAME, \
+    STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
     MATCHES_IDS_SEPARATOR, \
-    CLIENT_TO_LONG_MATCHES_QUEUE_NAME, \
     LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
     RABBITMQ_HOST, \
     SENTINEL_MESSAGE, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import send_sentinel, send_string_to_queue
 
 MATCHES_CSV_FILE = '/matches.csv'
 MATCH_PLAYERS_CSV_FILE = '/match_players.csv'
@@ -53,10 +53,22 @@ def get_matches_ids(channel, queue_name, message):
     channel.start_consuming()
 
 
-def send_chunk(channel, queue_name, chunk):
+def send_string_to_exchange(channel, exchange_name, message):
+    channel.basic_publish(
+        exchange=exchange_name,
+        routing_key='',
+        body=message.encode(STRING_ENCODING)
+    )
+
+
+def send_sentinel_to_exchange(channel, exchange_name):
+    send_string_to_exchange(channel, exchange_name, SENTINEL_MESSAGE)
+
+
+def send_chunk(channel, exchange_name, chunk):
     if len(chunk) > 0:
         chunk_string = STRING_LINE_SEPARATOR.join(chunk)
-        send_string_to_queue(channel, queue_name, chunk_string)
+        send_string_to_exchange(channel, exchange_name, chunk_string)
 
 
 def get_line_string_for_long_matches(line_list):
@@ -79,7 +91,8 @@ def get_line_string_for_weaker_winner(line_list):
         ]
     )
 
-def send_file_in_chunks(channel, queue_name, file_path, get_line_string_function):
+
+def send_file_in_chunks(channel, exchange_name, file_path, get_line_string_function):
     chunk = []
     with open(file_path) as csvfile:
         reader = csv.reader(csvfile)
@@ -88,23 +101,25 @@ def send_file_in_chunks(channel, queue_name, file_path, get_line_string_function
                 # file header
                 continue
             if (i % CHUCKSIZE_IN_LINES == 0 and i > 0):
-                send_chunk(channel, queue_name, chunk)
+                send_chunk(channel, exchange_name, chunk)
                 del chunk[:]  # delete from memory
             chunk.append(get_line_string_function(line))
-        send_chunk(channel, queue_name, chunk)
-        send_sentinel(channel, queue_name)
+        send_chunk(channel, exchange_name, chunk)
+        send_sentinel_to_exchange(channel, exchange_name)
 
 
 def request_long_matches():
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host=RABBITMQ_HOST))
     channel = connection.channel()
-    channel.queue_declare(queue=CLIENT_TO_LONG_MATCHES_QUEUE_NAME)
+    channel.exchange_declare(
+        exchange=MATCHES_FANOUT_EXCHANGE_NAME,
+        exchange_type='fanout')
     channel.queue_declare(queue=LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
 
     print(f"Starting to send matches to server to request long matches")
     send_file_in_chunks(channel,
-                        CLIENT_TO_LONG_MATCHES_QUEUE_NAME,
+                        MATCHES_FANOUT_EXCHANGE_NAME,
                         MATCHES_CSV_FILE,
                         get_line_string_for_long_matches)
     print(f"Finished sending matches to server to request long matches")
@@ -119,12 +134,14 @@ def request_weaker_winner():
     connection = pika.BlockingConnection(
         pika.ConnectionParameters(host=RABBITMQ_HOST))
     channel = connection.channel()
-    channel.queue_declare(queue=CLIENT_TO_WEAKER_WINNER_QUEUE_NAME)
+    channel.exchange_declare(
+        exchange=PLAYERS_FANOUT_EXCHANGE_NAME,
+        exchange_type='fanout')
     channel.queue_declare(queue=WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
 
     print(f"Starting to send players to server to request weaker winner")
     send_file_in_chunks(channel,
-                        CLIENT_TO_WEAKER_WINNER_QUEUE_NAME,
+                        PLAYERS_FANOUT_EXCHANGE_NAME,
                         MATCH_PLAYERS_CSV_FILE,
                         get_line_string_for_weaker_winner)
     print(f"Finished sending matches to server to request weaker winner")

@@ -4,7 +4,7 @@ def send_matches_ids(channel, queue_name, matches_ids):
     matches_ids_string = MATCHES_IDS_SEPARATOR.join(matches_ids)
     send_string_to_queue(channel, queue_name, matches_ids_string)
 
-def send_sentinel(channel, queue_name):
+def send_sentinel_to_queue(channel, queue_name):
     send_string_to_queue(channel, queue_name, SENTINEL_MESSAGE)
 
 
