@@ -18,14 +18,18 @@ def send_string_to_queue(channel, queue_name, message):
     )
 
 
-def send_list_of_columns_to_exchange(channel, exchange_name, list_of_columns, routing_key=''):
-    list_string = STRING_LINE_SEPARATOR.join(
+def get_string_from_list_of_columns(list_of_columns):
+    return STRING_LINE_SEPARATOR.join(
         [
             STRING_COLUMN_SEPARATOR.join(columns) for columns in list_of_columns
         ]
     )
-    send_string_to_exchange(
-        channel, exchange_name, list_string, routing_key)
+
+def send_list_of_columns_to_queue(channel, queue_name, list_of_columns):
+    list_string = get_string_from_list_of_columns(list_of_columns)
+    send_string_to_queue(
+        channel, queue_name, list_string)
+
 
 def send_string_to_exchange(channel, exchange_name, message, routing_key=''):
     channel.basic_publish(
@@ -34,7 +38,12 @@ def send_string_to_exchange(channel, exchange_name, message, routing_key=''):
         body=message.encode(STRING_ENCODING)
     )
 
-
 def send_sentinel_to_exchange(channel, exchange_name, routing_key=''):
     send_string_to_exchange(channel, exchange_name,
                             SENTINEL_MESSAGE, routing_key)
+
+
+def send_list_of_columns_to_exchange(channel, exchange_name, list_of_columns, routing_key=''):
+    list_string = get_string_from_list_of_columns(list_of_columns)
+    send_string_to_exchange(
+        channel, exchange_name, list_string, routing_key)

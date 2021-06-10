@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from communications.rabbitmq_interface import send_sentinel_to_exchange, send_string_to_exchange
 import csv
 import pika
 import threading
@@ -12,7 +11,10 @@ from communications.constants import MATCHES_FANOUT_EXCHANGE_NAME, \
     MATCHES_IDS_SEPARATOR, \
     LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
     RABBITMQ_HOST, \
-    SENTINEL_MESSAGE, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
+    SENTINEL_MESSAGE, \
+    WEAKER_WINNER_TO_CLIENT_QUEUE_NAME, \
+    WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
+from communications.rabbitmq_interface import send_sentinel_to_exchange, send_string_to_exchange
 
 MATCHES_CSV_FILE = '/matches.csv'
 MATCH_PLAYERS_CSV_FILE = '/match_players.csv'
@@ -147,7 +149,7 @@ def send_players():
                         PLAYERS_FANOUT_EXCHANGE_NAME,
                         MATCH_PLAYERS_CSV_FILE,
                         get_line_string_for_players)
-    print(f"Finished sending matches to server")
+    print(f"Finished sending players to server")
     connection.close()
 
 
@@ -162,11 +164,35 @@ def receive_weaker_winner_matches_ids():
                     "Los IDs de matches en partidas 1v1 donde el ganador tiene un rating 30 % menor al perdedor y el rating del ganador es superior a 1000 son: ")
     connection.close()
 
+
+def receive_winner_rate_of_all_civs(channel, method, properties, body):
+    received_string = body.decode(STRING_ENCODING)
+    print("Porcentaje de victorias por civilización en partidas 1v1(ladder == RM_1v1) con civilizaciones diferentes en mapa arena son:")
+    print(received_string)
+    channel.stop_consuming()
+
+
+def receive_winner_rate_by_civ():
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host=RABBITMQ_HOST))
+    channel = connection.channel()
+    channel.queue_declare(queue=WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME)
+
+    print(f"Starting to receive to winner rate by civ replied")
+    channel.basic_consume(
+        queue=WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME,
+        on_message_callback=receive_winner_rate_of_all_civs,
+        auto_ack=True
+    )
+    channel.start_consuming()
+    connection.close()
+
+
 def main():
     send_matches_th = threading.Thread(
         target=send_matches)
     send_matches_th.start()
-    
+
     send_players_th = threading.Thread(
         target=send_players)
     send_players_th.start()
@@ -181,9 +207,14 @@ def main():
     # receive_weaker_winner_matches_ids_th = threading.Thread(
         # target=receive_weaker_winner_matches_ids)
     # receive_weaker_winner_matches_ids_th.start()
+
+    receive_winner_rate_by_civ_th = threading.Thread(
+        target=receive_winner_rate_by_civ)
+    receive_winner_rate_by_civ_th.start()
     # 
     # receive_long_matches_ids_th.join()
     # receive_weaker_winner_matches_ids_th.join()
+    receive_winner_rate_by_civ_th.join()
 
 if __name__ == '__main__':
     main()

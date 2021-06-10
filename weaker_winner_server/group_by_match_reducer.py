@@ -5,7 +5,7 @@ from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
     FROM_CLIENT_PLAYER_WINNER_INDEX, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, \
-    GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, \
+    GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, PLAYER_LOSER, PLAYER_WINNER, \
     SENTINEL_KEY, \
     STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
@@ -14,9 +14,6 @@ from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
     SENTINEL_MESSAGE, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
 from communications.rabbitmq_interface import send_matches_ids, send_sentinel_to_queue
-
-WINNER = "True"
-LOSER = "False"
 
 def can_match_be_1_vs_1(players_list, new_player):
     return (players_list is not None and (len(players_list) == 0 or (len(players_list) == 1 and players_list[0][FROM_CLIENT_PLAYER_WINNER_INDEX] != new_player[WINNER_INDEX])))
@@ -118,9 +115,9 @@ def filter_players_by_weaker_winner(players_by_match):
         # final check that all matches are of two players
         if players_list is not None and len(players_list) == 2:
             winner = next(
-                (player for player in players_list if player[FROM_CLIENT_PLAYER_WINNER_INDEX] == WINNER))
+                (player for player in players_list if player[FROM_CLIENT_PLAYER_WINNER_INDEX] == PLAYER_WINNER))
             loser = next(
-                (player for player in players_list if player[FROM_CLIENT_PLAYER_WINNER_INDEX] == LOSER))
+                (player for player in players_list if player[FROM_CLIENT_PLAYER_WINNER_INDEX] == PLAYER_LOSER))
 
             if winner[FROM_CLIENT_PLAYER_RATING_INDEX] != '' and loser[FROM_CLIENT_PLAYER_RATING_INDEX] != '':
                 winner_rating = int(winner[FROM_CLIENT_PLAYER_RATING_INDEX])

@@ -11,6 +11,10 @@ services:
       - PYTHONUNBUFFERED=1
     networks:
       - age_of_empires_net
+    depends_on:
+      - filter_by_ladder_and_match
+      - join_master
+      # TODO poner acá el resto que reciban la entrada
 
   # long_matches_server:
     # image: rabbitmq-python-base:0.0.1
@@ -81,6 +85,43 @@ services:
       - ./join_matches_and_players:/join_matches_and_players
       - ./communications:/join_matches_and_players/communications
     entrypoint: python3 /join_matches_and_players/reducer.py
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - age_of_empires_net
+
+  group_by_civ_master:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./group_by_civ:/group_by_civ
+      - ./communications:/group_by_civ/communications
+      - ./partition_function:/group_by_civ/partition_function
+    entrypoint: python3 /group_by_civ/master.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT}
+    networks:
+      - age_of_empires_net
+    depends_on:
+      - group_by_civ_reducer
+
+  group_by_civ_reducer:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./group_by_civ:/group_by_civ
+      - ./communications:/group_by_civ/communications
+    entrypoint: python3 /group_by_civ/reducer.py
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - age_of_empires_net
+
+  winner_rate_calculator:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./civs_calculators:/winner_rate_calculator
+      - ./communications:/winner_rate_calculator/communications
+    entrypoint: python3 /winner_rate_calculator/winner_rate_calculator.py
     environment:
       - PYTHONUNBUFFERED=1
     networks:

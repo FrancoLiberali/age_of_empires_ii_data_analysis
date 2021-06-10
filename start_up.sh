@@ -11,5 +11,5 @@ sleep 5
 # TODO que sea una distinto para cada conjunto de reducers
 export REDUCERS_AMOUNT=$1
 # docker-compose -f docker-compose-client-and-servers.yaml up -d --scale group_by_match_reducer_server=$1
-docker-compose -f docker-compose-client-and-servers.yaml up -d --scale join_reducer=$1
+docker-compose -f docker-compose-client-and-servers.yaml up -d --scale join_reducer=$1 --scale group_by_civ_reducer=$1
 docker-compose -f docker-compose-client-and-servers.yaml logs -f
