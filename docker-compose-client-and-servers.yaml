@@ -86,6 +86,7 @@ services:
     volumes:
       - ./join_matches_and_players:/join_matches_and_players
       - ./communications:/join_matches_and_players/communications
+      - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
     entrypoint: python3 /join_matches_and_players/reducer.py
     environment:
       - PYTHONUNBUFFERED=1
@@ -113,6 +114,7 @@ services:
     volumes:
       - ./group_by_civ:/group_by_civ
       - ./communications:/group_by_civ/communications
+      - ./master_reducers_arq:/group_by_civ/master_reducers_arq
     entrypoint: python3 /group_by_civ/reducer.py
     environment:
       - PYTHONUNBUFFERED=1

@@ -1,72 +1,20 @@
-import pika
-
 from communications.constants import GROUP_BY_CIV_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
     GROUP_BY_CIV_MASTER_TO_REDUCERS_QUEUE_NAME, \
     GROUP_BY_CIV_REDUCERS_BARRIER_QUEUE_NAME, \
     GROUP_BY_CIV_REDUCERS_TO_WINNER_RATE_CALCULATOR_QUEUE_NAME, \
     PLAYER_LOSER, \
     PLAYER_WINNER, \
-    SENTINEL_KEY, \
     STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
-    RABBITMQ_HOST, \
     SENTINEL_MESSAGE
-from communications.rabbitmq_interface import send_list_of_columns_to_queue, send_sentinel_to_queue
+from communications.rabbitmq_interface import send_list_of_columns_to_queue
+from master_reducers_arq.reducer import main_reducer
 
-# TODO codigo repetido con reducer de group by y de join 
-INPUT_EXCHANGE_NAME = GROUP_BY_CIV_MASTER_TO_REDUCERS_EXCHANGE_NAME  # TODO envvar
-BARRIER_QUEUE_NAME = GROUP_BY_CIV_REDUCERS_BARRIER_QUEUE_NAME  # TODO envvar
-KEYS_QUEUE_NAME = GROUP_BY_CIV_MASTER_TO_REDUCERS_QUEUE_NAME  # TODO envvar
-OUTPUT_QUEUE_NAME = GROUP_BY_CIV_REDUCERS_TO_WINNER_RATE_CALCULATOR_QUEUE_NAME  # TODO envvar
-
-def get_set_keys_function(keys):
-    # python function currying
-    def set_keys(channel, method, properties, body):
-        chunk_string = body.decode(STRING_ENCODING)
-        if chunk_string == SENTINEL_MESSAGE:
-            print("Sentinel message received, stoping receiving keys")
-            channel.stop_consuming()
-        else:
-            keys.append(chunk_string)
-        channel.basic_ack(delivery_tag=method.delivery_tag)
-    return set_keys
-
-
-def receive_keys(channel):
-    channel.queue_declare(queue=KEYS_QUEUE_NAME)
-    keys = []
-    channel.basic_consume(
-        queue=KEYS_QUEUE_NAME,
-        on_message_callback=get_set_keys_function(keys)
-    )
-    print('Waiting for keys assignement')
-    channel.start_consuming()
-    print(f'Assigned keys are: {keys}')
-    return keys
-
-
-def subscribe_to_keys(channel, keys):
-    print(f"Subscribing to keys")
-    channel.exchange_declare(
-        exchange=INPUT_EXCHANGE_NAME,
-        exchange_type='direct')
-
-    result = channel.queue_declare(queue='')
-    private_queue_name = result.method.queue
-    for key in keys + [SENTINEL_KEY]:
-        channel.queue_bind(
-            exchange=INPUT_EXCHANGE_NAME,
-            queue=private_queue_name,
-            routing_key=key)
-    print(f"Finished subscribing to keys")
-    return private_queue_name
-
-
-def send_sentinel_to_master(channel):
-    channel.queue_declare(queue=BARRIER_QUEUE_NAME)
-    send_sentinel_to_queue(channel, BARRIER_QUEUE_NAME)
-
+INPUT_EXCHANGE_NAME = GROUP_BY_CIV_MASTER_TO_REDUCERS_EXCHANGE_NAME
+BARRIER_QUEUE_NAME = GROUP_BY_CIV_REDUCERS_BARRIER_QUEUE_NAME
+KEYS_QUEUE_NAME = GROUP_BY_CIV_MASTER_TO_REDUCERS_QUEUE_NAME
+OUTPUT_QUEUE_NAME = GROUP_BY_CIV_REDUCERS_TO_WINNER_RATE_CALCULATOR_QUEUE_NAME
 
 FROM_JOIN_PLAYER_WINNER_INDEX = 1
 FROM_JOIN_PLAYER_CIV_INDEX = 2
@@ -114,21 +62,9 @@ def group_players_by_civ(channel, private_queue_name, keys):
     return wins_and_defeats_by_civ
 
 
-def main():
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
-
-    keys = receive_keys(channel)
-    private_queue_name = subscribe_to_keys(channel, keys)
-    print("Sending sentinel to master to notify ready to receive players")
-    send_sentinel_to_master(channel)
-
-    wins_and_defeats_by_civ = group_players_by_civ(
-        channel, private_queue_name, keys)
-
-    print(f"Wins and defeats per civ from all matches with keys {keys} counted: {wins_and_defeats_by_civ}. Sending it to win rate calculator")
-
+def send_wins_and_defeats_by_civ(channel, wins_and_defeats_by_civ, keys):
+    print(
+        f"Wins and defeats per civ from all matches with keys {keys} counted: {wins_and_defeats_by_civ}. Sending it to win rate calculator")
     channel.queue_declare(queue=OUTPUT_QUEUE_NAME)
     data_to_send = []
     for civ, wins_and_defeats in wins_and_defeats_by_civ.items():
@@ -137,10 +73,14 @@ def main():
         )
     send_list_of_columns_to_queue(channel, OUTPUT_QUEUE_NAME, data_to_send)
 
-    print("Sending sentinel to master to notify finished")
-    send_sentinel_to_master(channel)
-    connection.close()
-
+def main():
+    main_reducer(
+        KEYS_QUEUE_NAME,
+        BARRIER_QUEUE_NAME,
+        INPUT_EXCHANGE_NAME,
+        group_players_by_civ,
+        send_wins_and_defeats_by_civ
+    )
 
 if __name__ == '__main__':
     main()
