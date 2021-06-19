@@ -1,19 +1,23 @@
-import pika
-
 from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
     FROM_CLIENT_PLAYER_RATING_INDEX, \
     FROM_CLIENT_PLAYER_WINNER_INDEX, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, \
-    GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, PLAYER_LOSER, PLAYER_WINNER, \
-    SENTINEL_KEY, \
+    GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, \
+    PLAYER_LOSER, \
+    PLAYER_WINNER, \
     STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
-    RABBITMQ_HOST, \
     SENTINEL_MESSAGE, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import send_matches_ids, send_sentinel_to_queue
+from communications.rabbitmq_interface import send_matches_ids
+from master_reducers_arq.reducer import main_reducer
+
+INPUT_EXCHANGE_NAME = GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME
+BARRIER_QUEUE_NAME = GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME
+KEYS_QUEUE_NAME = GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME
+OUTPUT_QUEUE_NAME = WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
 
 def can_match_be_1_vs_1(players_list, new_player):
     return (players_list is not None and (len(players_list) == 0 or (len(players_list) == 1 and players_list[0][FROM_CLIENT_PLAYER_WINNER_INDEX] != new_player[FROM_CLIENT_PLAYER_WINNER_INDEX])))
@@ -41,57 +45,6 @@ def get_group_by_match_function(players_by_match):
 
 
 MINIMUM_RATING_PROCENTAGE_DIFF = 30 # TODO envvar
-
-
-def get_set_keys_function(keys):
-    # python function currying
-    def set_keys(channel, method, properties, body):
-        chunk_string = body.decode(STRING_ENCODING)
-        if chunk_string == SENTINEL_MESSAGE:
-            print("Sentinel message received, stoping receiving keys")
-            channel.stop_consuming()
-        else:
-            keys.append(chunk_string)
-        channel.basic_ack(delivery_tag=method.delivery_tag)
-    return set_keys
-
-
-def receive_keys(channel):
-    channel.queue_declare(queue=GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME)
-    keys = []
-    channel.basic_consume(
-        queue=GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME,
-        on_message_callback=get_set_keys_function(keys)
-    )
-    print('Waiting for keys assignement')
-    channel.start_consuming()
-    print(f'Assigned keys are: {keys}')
-    return keys
-
-
-def subscribe_to_keys(channel, keys):
-    print(f"Subscribing to keys")
-    channel.exchange_declare(
-        exchange=GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME,
-        exchange_type='direct')
-
-    result = channel.queue_declare(queue='')
-    private_queue_name = result.method.queue
-    for key in keys:
-        channel.queue_bind(
-            exchange=GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME,
-            queue=private_queue_name,
-            routing_key=key)
-    channel.queue_bind(
-        exchange=GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME,
-        queue=private_queue_name,
-        routing_key=SENTINEL_KEY)
-    print(f"Finished subscribing to keys")
-    return private_queue_name
-
-def send_sentinel_to_master(channel):
-    channel.queue_declare(queue=GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME)
-    send_sentinel_to_queue(channel, GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME)
 
 
 def process_player_by_match(channel, private_queue_name, keys):
@@ -128,30 +81,26 @@ def filter_players_by_weaker_winner(players_by_match):
                     matches_ids.append(match_id)
     return matches_ids
 
-def main():
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
 
-    keys = receive_keys(channel)
-    private_queue_name = subscribe_to_keys(channel, keys)
-    print("Sending sentinel to master to notify ready to receive players")
-    send_sentinel_to_master(channel)
-
-    players_by_match = process_player_by_match(channel, private_queue_name, keys)
-
+def send_matches_ids_to_client(channel, players_by_match, keys):
     matches_ids = filter_players_by_weaker_winner(players_by_match)
     print(f"All matches with keys {keys} with weaker winner found")
 
     if len(matches_ids) > 0:
-        channel.queue_declare(queue=WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
+        channel.queue_declare(queue=OUTPUT_QUEUE_NAME)
         print(f"Sending matches found to client")
-        send_matches_ids(channel, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME, matches_ids)
+        send_matches_ids(
+            channel, OUTPUT_QUEUE_NAME, matches_ids)
 
-    print("Sending sentinel to master to notify finished")
-    send_sentinel_to_master(channel)
-    connection.close()
 
+def main():
+    main_reducer(
+        KEYS_QUEUE_NAME,
+        BARRIER_QUEUE_NAME,
+        INPUT_EXCHANGE_NAME,
+        process_player_by_match,
+        send_matches_ids_to_client
+    )
 
 if __name__ == '__main__':
     main()

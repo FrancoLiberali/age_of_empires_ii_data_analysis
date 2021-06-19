@@ -34,6 +34,7 @@ services:
       - ./weaker_winner_server:/group_by_match
       - ./communications:/group_by_match/communications
       - ./partition_function:/group_by_match/partition_function
+      - ./master_reducers_arq:/group_by_match/master_reducers_arq
     entrypoint: python3 /group_by_match/group_by_match_master.py
     environment:
       - PYTHONUNBUFFERED=1
@@ -48,6 +49,7 @@ services:
     volumes:
       - ./weaker_winner_server:/group_by_match_reducer
       - ./communications:/group_by_match_reducer/communications
+      - ./master_reducers_arq:/group_by_match_reducer/master_reducers_arq
     entrypoint: python3 /group_by_match_reducer/group_by_match_reducer.py
     environment:
       - PYTHONUNBUFFERED=1
