@@ -71,6 +71,7 @@ services:
       - ./join_matches_and_players:/join_matches_and_players
       - ./communications:/join_matches_and_players/communications
       - ./partition_function:/join_matches_and_players/partition_function
+      - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
     entrypoint: python3 /join_matches_and_players/master.py
     environment:
       - PYTHONUNBUFFERED=1
@@ -97,6 +98,7 @@ services:
       - ./group_by_civ:/group_by_civ
       - ./communications:/group_by_civ/communications
       - ./partition_function:/group_by_civ/partition_function
+      - ./master_reducers_arq:/group_by_civ/master_reducers_arq
     entrypoint: python3 /group_by_civ/master.py
     environment:
       - PYTHONUNBUFFERED=1

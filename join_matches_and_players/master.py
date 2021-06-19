@@ -1,6 +1,3 @@
-import pika
-import os
-
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
     JOIN_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
@@ -14,47 +11,18 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     PLAYERS_KEY,\
     STRING_COLUMN_SEPARATOR, \
     STRING_ENCODING, \
-    RABBITMQ_HOST, \
     SENTINEL_MESSAGE, STRING_LINE_SEPARATOR, \
-    MATCHES_TO_JOIN_MASTER_EXCHANGE_NAME, \
-    SENTINEL_KEY
-from communications.rabbitmq_interface import send_sentinel_to_queue, send_string_to_queue
-from partition_function.partition_function import PartitionFunction
+    MATCHES_TO_JOIN_MASTER_EXCHANGE_NAME
+from master_reducers_arq.master import main_master
 
-# TODO codigo repetido con master de groupby
-
-OUTPUT_EXCHANGE_NAME = JOIN_MASTER_TO_REDUCERS_EXCHANGE_NAME # TODO envvar
-MATCHES_INPUT_EXCHANGE_NAME = MATCHES_TO_JOIN_MASTER_EXCHANGE_NAME  # TODO envvar
-MATCHES_INPUT_EXCHANGE_TYPE = "direct"  # TODO envvar
-PLAYERS_INPUT_EXCHANGE_NAME = PLAYERS_FANOUT_EXCHANGE_NAME  # TODO envvar
-PLAYERS_INPUT_EXCHANGE_TYPE = "fanout"  # TODO envvar
-KEYS_QUEUE_NAME = JOIN_MASTER_TO_REDUCERS_QUEUE_NAME  # TODO envvar
-BARRIER_QUEUE_NAME = JOIN_REDUCERS_BARRIER_QUEUE_NAME  # TODO envvar
-REDUCERS_OUTPUT_QUEUE_NAME = JOIN_REDUCERS_TO_GROUP_BY_CIV_MASTER_QUEUE_NAME  # TODO envvar
-
-def get_receive_sentinel_function(sentinel_received_amount, sentinels_objetive):
-    # python function currying
-    def receive_sentinel(channel, method, properties, body):
-        if body.decode(STRING_ENCODING) == SENTINEL_MESSAGE:
-            sentinel_received_amount[0] += 1
-            print(
-                f"Sentinels from group by match reducers received: {sentinel_received_amount[0]} / {sentinels_objetive}")
-            if sentinel_received_amount[0] == sentinels_objetive:
-                channel.stop_consuming()
-        channel.basic_ack(delivery_tag=method.delivery_tag)
-    return receive_sentinel
-
-
-def receive_a_sentinel_per_reducer(channel, reducers_amount):
-    channel.queue_declare(queue=BARRIER_QUEUE_NAME)
-    sentinel_received_amount = [0]  # using a list to pass by reference
-    channel.basic_consume(
-        queue=BARRIER_QUEUE_NAME,
-        on_message_callback=get_receive_sentinel_function(
-            sentinel_received_amount,
-            reducers_amount),
-    )
-    channel.start_consuming()
+OUTPUT_EXCHANGE_NAME = JOIN_MASTER_TO_REDUCERS_EXCHANGE_NAME
+MATCHES_INPUT_EXCHANGE_NAME = MATCHES_TO_JOIN_MASTER_EXCHANGE_NAME
+MATCHES_INPUT_EXCHANGE_TYPE = "direct"
+PLAYERS_INPUT_EXCHANGE_NAME = PLAYERS_FANOUT_EXCHANGE_NAME
+PLAYERS_INPUT_EXCHANGE_TYPE = "fanout"
+KEYS_QUEUE_NAME = JOIN_MASTER_TO_REDUCERS_QUEUE_NAME
+BARRIER_QUEUE_NAME = JOIN_REDUCERS_BARRIER_QUEUE_NAME
+REDUCERS_OUTPUT_QUEUE_NAME = JOIN_REDUCERS_TO_GROUP_BY_CIV_MASTER_QUEUE_NAME
 
 
 ROWS_CHUNK_SIZE = 100  # TODO envvar, es muy importante
@@ -86,15 +54,6 @@ def add_to_dict_by_key(channel,
 
     send_dict_by_key(channel, dict_by_key, tag_to_send)
 
-# TODO unificar con el client
-
-
-def send_sentinel_to_reducers(channel):
-    channel.basic_publish(exchange=OUTPUT_EXCHANGE_NAME,
-                          routing_key=SENTINEL_KEY,
-                          body=SENTINEL_MESSAGE.encode(STRING_ENCODING))
-
-
 INPUTS_AMOUNT = 2
 
 def get_dispach_to_reducers_function(players_by_key, matches_by_key, sentinels_count, partition_function):
@@ -104,12 +63,11 @@ def get_dispach_to_reducers_function(players_by_key, matches_by_key, sentinels_c
             sentinels_count[0] += 1
             print(f"Sentinel message {sentinels_count[0]}/{INPUTS_AMOUNT} received")
             if sentinels_count[0] == INPUTS_AMOUNT:
-                print("Stoping receive and dispach it to reducers. Sending sentinel to reducers for alerting them than no more data will be sended.")
+                print("Stoping receive and dispach it to reducers.")
                 channel.stop_consuming()
                 # send the remaining players and matches
                 send_dict_by_key(channel, players_by_key, PLAYERS_KEY, False)
                 send_dict_by_key(channel, matches_by_key, MATCHES_KEY, False)
-                send_sentinel_to_reducers(channel)
         else:
             if method.routing_key == PLAYERS_KEY:
                 received_players = [
@@ -137,7 +95,7 @@ def get_dispach_to_reducers_function(players_by_key, matches_by_key, sentinels_c
     return dispach_to_reducers
 
 
-def receive_and_dispach_players_and_matches(channel, private_queue_name, partition_function, reducers_amount):
+def receive_and_dispach_players_and_matches(channel, private_queue_name, partition_function):
     players_by_key = {}
     matches_by_key = {}
     sentinels_count = [0]
@@ -154,30 +112,6 @@ def receive_and_dispach_players_and_matches(channel, private_queue_name, partiti
     print("Starting to receive players and matches and dispach it to reducers by key")
     channel.start_consuming()
 
-    print("Waiting for a sentinel per reducer that notifies they finished")
-    receive_a_sentinel_per_reducer(channel, reducers_amount)
-
-
-def send_keys_to_reducers(channel, partition_function, reducers_amount):
-    channel.queue_declare(queue=KEYS_QUEUE_NAME)
-
-    posibles_keys = partition_function.get_posibles_keys()
-    print(f"Starting to send keys to reducers: {posibles_keys}")
-    for key in posibles_keys:
-        # as it is round robin, all reducers will get equitative keys amount
-        send_string_to_queue(
-            channel,
-            KEYS_QUEUE_NAME,
-            key
-        )
-    print("All keys sended, sending sentinels to notify reducers that no more keys are going to be sended")
-    for _ in range(0, reducers_amount):
-        send_sentinel_to_queue(
-            channel, KEYS_QUEUE_NAME)
-
-    print("Waiting for a sentinel per reducer that notifies they are subscribed to the corresponding keys")
-    receive_a_sentinel_per_reducer(channel, reducers_amount)
-
 
 def subscribe_to_entries(channel):
     channel.exchange_declare(
@@ -186,9 +120,6 @@ def subscribe_to_entries(channel):
     channel.exchange_declare(
         exchange=PLAYERS_INPUT_EXCHANGE_NAME,
         exchange_type=PLAYERS_INPUT_EXCHANGE_TYPE)
-    channel.exchange_declare(
-        exchange=OUTPUT_EXCHANGE_NAME,
-        exchange_type='direct')
 
     result = channel.queue_declare(queue='join_matches')  # TODO poner anonima
     private_queue_name = result.method.queue
@@ -205,27 +136,14 @@ def subscribe_to_entries(channel):
     return private_queue_name
 
 def main():
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
-
-    private_queue_name = subscribe_to_entries(channel)
-
-    # TODO usar codigo unificado cuando esté
-    reducers_amount = int(os.environ["REDUCERS_AMOUNT"])
-    partition_function = PartitionFunction(reducers_amount)
-
-    send_keys_to_reducers(channel, partition_function, reducers_amount)
-
-    receive_and_dispach_players_and_matches(
-        channel, private_queue_name, partition_function, reducers_amount)
-
-    print("Sending sentinel to client to notify all matches ids sended")
-    channel.queue_declare(
-        queue=REDUCERS_OUTPUT_QUEUE_NAME)
-    send_sentinel_to_queue(channel, REDUCERS_OUTPUT_QUEUE_NAME)
-
-    connection.close()
+    main_master(
+        KEYS_QUEUE_NAME,
+        BARRIER_QUEUE_NAME,
+        REDUCERS_OUTPUT_QUEUE_NAME,
+        OUTPUT_EXCHANGE_NAME,
+        subscribe_to_entries,
+        receive_and_dispach_players_and_matches
+    )
 
 
 if __name__ == '__main__':
