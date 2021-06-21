@@ -1,9 +1,7 @@
+import os
+
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
-    JOIN_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
-    JOIN_REDUCERS_BARRIER_QUEUE_NAME, \
-    JOIN_MASTER_TO_REDUCERS_QUEUE_NAME, \
-    JOIN_REDUCERS_TO_GROUP_BY_CIV_MASTER_QUEUE_NAME, \
     JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, \
     JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, \
     MATCHES_KEY, \
@@ -11,18 +9,20 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     PLAYERS_KEY,\
     STRING_COLUMN_SEPARATOR, \
     STRING_ENCODING, \
-    SENTINEL_MESSAGE, STRING_LINE_SEPARATOR, \
-    MATCHES_TO_JOIN_MASTER_EXCHANGE_NAME
+    SENTINEL_MESSAGE, \
+    STRING_LINE_SEPARATOR
 from master_reducers_arq.master import main_master
 
-OUTPUT_EXCHANGE_NAME = JOIN_MASTER_TO_REDUCERS_EXCHANGE_NAME
-MATCHES_INPUT_EXCHANGE_NAME = MATCHES_TO_JOIN_MASTER_EXCHANGE_NAME
+MATCHES_INPUT_EXCHANGE_NAME = os.environ["MATCHES_INPUT_EXCHANGE_NAME"]
 MATCHES_INPUT_EXCHANGE_TYPE = "direct"
 PLAYERS_INPUT_EXCHANGE_NAME = PLAYERS_FANOUT_EXCHANGE_NAME
 PLAYERS_INPUT_EXCHANGE_TYPE = "fanout"
-KEYS_QUEUE_NAME = JOIN_MASTER_TO_REDUCERS_QUEUE_NAME
-BARRIER_QUEUE_NAME = JOIN_REDUCERS_BARRIER_QUEUE_NAME
-REDUCERS_OUTPUT_QUEUE_NAME = JOIN_REDUCERS_TO_GROUP_BY_CIV_MASTER_QUEUE_NAME
+
+# TODO usar codigo unificado cuando esté
+OUTPUT_EXCHANGE_NAME = os.environ["OUTPUT_EXCHANGE_NAME"]
+KEYS_QUEUE_NAME = os.environ["KEYS_QUEUE_NAME"]
+BARRIER_QUEUE_NAME = os.environ["BARRIER_QUEUE_NAME"]
+REDUCERS_OUTPUT_QUEUE_NAME = os.environ["REDUCERS_OUTPUT_QUEUE_NAME"]
 
 
 ROWS_CHUNK_SIZE = 100  # TODO envvar, es muy importante
@@ -61,7 +61,8 @@ def get_dispach_to_reducers_function(players_by_key, matches_by_key, sentinels_c
         chunk_string = body.decode(STRING_ENCODING)
         if chunk_string == SENTINEL_MESSAGE:
             sentinels_count[0] += 1
-            print(f"Sentinel message {sentinels_count[0]}/{INPUTS_AMOUNT} received")
+            print(
+                f"Sentinel message from input {method.routing_key}: {sentinels_count[0]}/{INPUTS_AMOUNT} received")
             if sentinels_count[0] == INPUTS_AMOUNT:
                 print("Stoping receive and dispach it to reducers.")
                 channel.stop_consuming()
@@ -121,7 +122,7 @@ def subscribe_to_entries(channel):
         exchange=PLAYERS_INPUT_EXCHANGE_NAME,
         exchange_type=PLAYERS_INPUT_EXCHANGE_TYPE)
 
-    result = channel.queue_declare(queue='join_matches')  # TODO poner anonima
+    result = channel.queue_declare(queue='')
     private_queue_name = result.method.queue
     channel.queue_bind(
         exchange=MATCHES_INPUT_EXCHANGE_NAME,

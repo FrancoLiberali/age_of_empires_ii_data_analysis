@@ -15,16 +15,8 @@ GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME = 'group_by_match_reducers_barrier'
 GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME = 'group_by_match_master_to_reducers_queue'
 WEAKER_WINNER_TO_CLIENT_QUEUE_NAME = 'weaker_winner_to_client'
 
-MATCHES_TO_JOIN_MASTER_EXCHANGE_NAME = 'to_join_master_exchange'
-JOIN_MASTER_TO_REDUCERS_EXCHANGE_NAME = 'join_master_to_reducers_exchange'
-JOIN_REDUCERS_BARRIER_QUEUE_NAME = 'join_reducers_barrier'
-JOIN_MASTER_TO_REDUCERS_QUEUE_NAME = 'join_master_to_reducers_queue'
-JOIN_REDUCERS_TO_GROUP_BY_CIV_MASTER_QUEUE_NAME = 'join_reducers_to_group_by_civ_master_queue'
-GROUP_BY_CIV_MASTER_TO_REDUCERS_EXCHANGE_NAME = 'group_by_civ_master_to_reducers_exchange'
-GROUP_BY_CIV_REDUCERS_BARRIER_QUEUE_NAME = 'group_by_civ_reducers_barrier'
-GROUP_BY_CIV_MASTER_TO_REDUCERS_QUEUE_NAME = 'group_by_civ_master_to_reducers_queue'
-GROUP_BY_CIV_REDUCERS_TO_WINNER_RATE_CALCULATOR_QUEUE_NAME = 'group_by_civ_reducers_to_winner_rate_calculador_queue'
 WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME = 'winner_rate_calculator_to_client_queue'
+TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME = 'top_5_used_calculator_to_client_queue'
 
 SENTINEL_MESSAGE = "SENTINEL"
 

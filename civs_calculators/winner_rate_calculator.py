@@ -1,18 +1,15 @@
+import os
 import pika
-from datetime import datetime, time
 
-from communications.constants import FROM_CLIENT_MATCH_AVERAGE_RATING_INDEX, \
-    FROM_CLIENT_MATCH_DURATION_INDEX, \
-    FROM_CLIENT_MATCH_SERVER_INDEX, \
-    FROM_CLIENT_MATCH_TOKEN_INDEX, GROUP_BY_CIV_REDUCERS_TO_WINNER_RATE_CALCULATOR_QUEUE_NAME, \
-    STRING_ENCODING, \
+from communications.constants import STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
-    MATCHES_FANOUT_EXCHANGE_NAME, \
-    LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
     RABBITMQ_HOST, \
-    SENTINEL_MESSAGE, WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import send_list_of_columns_to_queue, send_matches_ids, send_sentinel_to_queue, send_string_to_queue
+    SENTINEL_MESSAGE, \
+    WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
+from communications.rabbitmq_interface import send_list_of_columns_to_queue
+
+INPUT_QUEUE_NAME = os.environ["INPUT_QUEUE_NAME"]
 
 FROM_GROUP_BY_CIV_CIV_INDEX = 0
 FROM_GROUP_BY_CIV_WINS_INDEX = 1
@@ -46,13 +43,13 @@ def main():
 
     channel = connection.channel()
     channel.queue_declare(
-        queue=GROUP_BY_CIV_REDUCERS_TO_WINNER_RATE_CALCULATOR_QUEUE_NAME)
+        queue=INPUT_QUEUE_NAME)
 
     channel.queue_declare(queue=WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME)
 
     wins_and_defeats_by_civ = {}
     channel.basic_consume(
-        queue=GROUP_BY_CIV_REDUCERS_TO_WINNER_RATE_CALCULATOR_QUEUE_NAME,
+        queue=INPUT_QUEUE_NAME,
         on_message_callback=get_group_wins_and_defeats_by_civ_function(
             wins_and_defeats_by_civ),
     )

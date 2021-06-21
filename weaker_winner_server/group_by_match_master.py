@@ -77,7 +77,7 @@ def subscribe_to_entries(channel):
     channel.exchange_declare(
         exchange=PLAYERS_FANOUT_EXCHANGE_NAME,
         exchange_type='fanout')
-    result = channel.queue_declare(queue='groupbymatch')  # TODO poner anonima
+    result = channel.queue_declare(queue='')
     private_queue_name = result.method.queue
     channel.queue_bind(
         exchange=PLAYERS_FANOUT_EXCHANGE_NAME,

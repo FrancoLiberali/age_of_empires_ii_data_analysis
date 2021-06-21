@@ -11,7 +11,7 @@ from communications.constants import MATCHES_FANOUT_EXCHANGE_NAME, \
     MATCHES_IDS_SEPARATOR, \
     LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
     RABBITMQ_HOST, \
-    SENTINEL_MESSAGE, \
+    SENTINEL_MESSAGE, TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME, \
     WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
 from communications.rabbitmq_interface import send_sentinel_to_exchange, send_string_to_exchange
@@ -188,6 +188,28 @@ def receive_winner_rate_by_civ():
     connection.close()
 
 
+def receive_top_5_civs_used(channel, method, properties, body):
+    received_string = body.decode(STRING_ENCODING)
+    print("Top 5 civilizaciones más usadas por pro players(rating > 2000) en team games (ladder == RM_TEAM) en mapa islands son: ")
+    print(received_string)
+    channel.stop_consuming()
+
+def receive_top_5_used_civs():
+    connection = pika.BlockingConnection(
+        pika.ConnectionParameters(host=RABBITMQ_HOST))
+    channel = connection.channel()
+    channel.queue_declare(queue=TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME)
+
+    print(f"Starting to receive to top 5 civs used replied")
+    channel.basic_consume(
+        queue=TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME,
+        on_message_callback=receive_top_5_civs_used,
+        auto_ack=True
+    )
+    channel.start_consuming()
+    connection.close()
+
+
 def main():
     send_matches_th = threading.Thread(
         target=send_matches)
@@ -196,9 +218,6 @@ def main():
     send_players_th = threading.Thread(
         target=send_players)
     send_players_th.start()
-
-    send_matches_th.join()
-    send_players_th.join()
 
     receive_long_matches_ids_th = threading.Thread(
         target=receive_long_matches_ids)
@@ -212,9 +231,16 @@ def main():
         target=receive_winner_rate_by_civ)
     receive_winner_rate_by_civ_th.start()
 
+    receive_top_5_used_civs_th = threading.Thread(
+        target=receive_top_5_used_civs)
+    receive_top_5_used_civs_th.start()
+
+    send_matches_th.join()
+    send_players_th.join()
     receive_long_matches_ids_th.join()
     receive_weaker_winner_matches_ids_th.join()
     receive_winner_rate_by_civ_th.join()
+    receive_top_5_used_civs_th.join()
 
 if __name__ == '__main__':
     main()
