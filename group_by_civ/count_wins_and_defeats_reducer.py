@@ -2,12 +2,14 @@ from communications.constants import PLAYER_LOSER, \
     PLAYER_WINNER
 from reducer import main_group_by_civ_reducer
 
-FROM_JOIN_PLAYER_WINNER_INDEX = 1
+FROM_JOIN_PLAYER_WINNER_INDEX = 2
+FROM_JOIN_PLAYER_CIV_INDEX = 3
 WINS_INDEX = 0
 DEFEATS_INDEX = 1
 
 
-def append_to_wins_and_defeats_by_civ(wins_and_defeats_by_civ, player_civ, player_columns):
+def append_to_wins_and_defeats_by_civ(wins_and_defeats_by_civ, player_columns):
+    player_civ = player_columns[FROM_JOIN_PLAYER_CIV_INDEX]
     wins_and_defeats_of_civ = wins_and_defeats_by_civ.get(
         player_civ, [0, 0])
 

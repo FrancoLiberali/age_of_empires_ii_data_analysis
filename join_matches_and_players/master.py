@@ -5,7 +5,6 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, \
     JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, \
     MATCHES_KEY, \
-    PLAYERS_FANOUT_EXCHANGE_NAME, \
     PLAYERS_KEY,\
     STRING_COLUMN_SEPARATOR, \
     STRING_ENCODING, \
@@ -15,7 +14,7 @@ from master_reducers_arq.master import main_master
 
 MATCHES_INPUT_EXCHANGE_NAME = os.environ["MATCHES_INPUT_EXCHANGE_NAME"]
 MATCHES_INPUT_EXCHANGE_TYPE = "direct"
-PLAYERS_INPUT_EXCHANGE_NAME = PLAYERS_FANOUT_EXCHANGE_NAME
+PLAYERS_INPUT_EXCHANGE_NAME = os.environ["PLAYERS_INPUT_EXCHANGE_NAME"]
 PLAYERS_INPUT_EXCHANGE_TYPE = "fanout"
 
 # TODO usar codigo unificado cuando esté
@@ -25,7 +24,7 @@ BARRIER_QUEUE_NAME = os.environ["BARRIER_QUEUE_NAME"]
 REDUCERS_OUTPUT_QUEUE_NAME = os.environ["REDUCERS_OUTPUT_QUEUE_NAME"]
 
 
-ROWS_CHUNK_SIZE = 100  # TODO envvar, es muy importante
+ROWS_CHUNK_SIZE = 95  # TODO envvar, es muy importante
 
 def send_dict_by_key(channel, dict_by_key, tag_to_send, check_chunk_size=True):
     for key, rows in list(dict_by_key.items()):
@@ -67,8 +66,10 @@ def get_dispach_to_reducers_function(players_by_key, matches_by_key, sentinels_c
                 print("Stoping receive and dispach it to reducers.")
                 channel.stop_consuming()
                 # send the remaining players and matches
-                send_dict_by_key(channel, players_by_key, PLAYERS_KEY, False)
-                send_dict_by_key(channel, matches_by_key, MATCHES_KEY, False)
+                send_dict_by_key(channel, players_by_key,
+                                 JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, False)
+                send_dict_by_key(channel, matches_by_key,
+                                 JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, False)
         else:
             if method.routing_key == PLAYERS_KEY:
                 received_players = [

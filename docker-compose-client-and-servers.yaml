@@ -14,7 +14,7 @@ services:
     depends_on:
       - filter_by_ladder_and_match
       - join_master_1v1
-      - join_master_team
+      - filter_by_rating
       - long_matches_server
       - group_by_match_master
 
@@ -81,6 +81,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT}
+      - PLAYERS_INPUT_EXCHANGE_NAME=players_fanout_exchange
       - MATCHES_INPUT_EXCHANGE_NAME=1v1_to_join_master_exchange
       - OUTPUT_EXCHANGE_NAME=1v1_join_master_to_reducers_exchange
       - KEYS_QUEUE_NAME=1v1_join_master_to_reducers_queue
@@ -107,6 +108,20 @@ services:
     networks:
       - age_of_empires_net
 
+  filter_by_rating:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./filter_by_rating:/filter_by_rating
+      - ./communications:/filter_by_rating/communications
+    entrypoint: python3 /filter_by_rating/main.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OUTPUT_EXCHANGE_NAME=filter_by_rating_to_team_join_master_exchange
+    networks:
+      - age_of_empires_net
+    depends_on:
+      - join_master_team
+
   join_master_team:
     image: rabbitmq-python-base:0.0.1
     volumes:
@@ -118,6 +133,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT}
+      - PLAYERS_INPUT_EXCHANGE_NAME=filter_by_rating_to_team_join_master_exchange
       - MATCHES_INPUT_EXCHANGE_NAME=team_to_join_master_exchange
       - OUTPUT_EXCHANGE_NAME=team_join_master_to_reducers_exchange
       - KEYS_QUEUE_NAME=team_join_master_to_reducers_queue

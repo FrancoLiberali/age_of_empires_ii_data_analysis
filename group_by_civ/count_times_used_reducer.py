@@ -1,7 +1,9 @@
 from reducer import main_group_by_civ_reducer
 
+FROM_JOIN_PLAYER_CIV_INDEX = 1
 
-def append_to_times_by_civ(times_by_civ, player_civ, player_columns):
+def append_to_times_by_civ(times_by_civ, player_columns):
+    player_civ = player_columns[FROM_JOIN_PLAYER_CIV_INDEX]
     times_used_of_civ = times_by_civ.get(
         player_civ, 0)
     times_by_civ[player_civ] = times_used_of_civ + 1

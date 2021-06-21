@@ -1,7 +1,6 @@
 import os
 
-from communications.constants import FROM_CLIENT_PLAYER_CIV_INDEX, \
-    SENTINEL_MESSAGE, \
+from communications.constants import SENTINEL_MESSAGE, \
     STRING_COLUMN_SEPARATOR, \
     STRING_ENCODING, \
     STRING_LINE_SEPARATOR
@@ -12,9 +11,6 @@ INPUT_EXCHANGE_NAME = os.environ["INPUT_EXCHANGE_NAME"]
 BARRIER_QUEUE_NAME = os.environ["BARRIER_QUEUE_NAME"]
 KEYS_QUEUE_NAME = os.environ["KEYS_QUEUE_NAME"]
 OUTPUT_QUEUE_NAME = os.environ["OUTPUT_QUEUE_NAME"]
-
-FROM_JOIN_PLAYER_CIV_INDEX = 2
-
 
 def get_count_function(results_by_civ, append_to_results_function):
     # python function currying
@@ -27,10 +23,9 @@ def get_count_function(results_by_civ, append_to_results_function):
             players_rows = chunk_string.split(STRING_LINE_SEPARATOR)
             for player_string in players_rows:
                 player_columns = player_string.split(STRING_COLUMN_SEPARATOR)
-                player_civ = player_columns[FROM_JOIN_PLAYER_CIV_INDEX]
 
                 append_to_results_function(
-                    results_by_civ, player_civ, player_columns)
+                    results_by_civ, player_columns)
         channel.basic_ack(delivery_tag=method.delivery_tag)
     return count
 

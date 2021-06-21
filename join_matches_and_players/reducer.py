@@ -1,8 +1,6 @@
 import os
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
-    FROM_CLIENT_PLAYER_CIV_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
-    FROM_CLIENT_PLAYER_WINNER_INDEX, \
     JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX, \
     JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, \
     JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, \
@@ -19,14 +17,6 @@ KEYS_QUEUE_NAME = os.environ["KEYS_QUEUE_NAME"]
 OUTPUT_QUEUE_NAME = os.environ["OUTPUT_QUEUE_NAME"]
 
 MATCH_PRESENT = 1
-
-def get_important_columns_of_player(player_columns):
-    return [
-        player_columns[FROM_CLIENT_PLAYER_MATCH_INDEX],
-        player_columns[FROM_CLIENT_PLAYER_WINNER_INDEX],
-        player_columns[FROM_CLIENT_PLAYER_CIV_INDEX],
-    ]
-
 
 def send_players(channel, players_to_send):
     if len(players_to_send) > 0:
@@ -46,14 +36,10 @@ def find_received_players_by_matches(channel, players_rows, players_by_match, ma
         if matches.get(match_id, None) is None:
             # store players and wait that match to arrive
             players_of_match = players_by_match.get(match_id, [])
-            players_of_match.append(
-                get_important_columns_of_player(player_columns)
-            )
+            players_of_match.append(player_columns)
             players_by_match[match_id] = players_of_match
         else:
-            players_to_send.append(
-                get_important_columns_of_player(player_columns)
-            )
+            players_to_send.append(player_columns)
     send_players(channel, players_to_send)
 
 def find_players_by_received_matches(channel, matches_rows, players_by_match, matches):

@@ -18,7 +18,7 @@ from communications.rabbitmq_interface import send_sentinel_to_exchange, send_st
 
 MATCHES_CSV_FILE = '/matches.csv'
 MATCH_PLAYERS_CSV_FILE = '/match_players.csv'
-CHUCKSIZE_IN_LINES = 100
+CHUCKSIZE_IN_LINES = 89  # TODO envvar
 
 ENTRY_MATCH_TOKEN_INDEX = 0 # TODO envvar
 ENTRY_MATCH_AVERAGE_RATING_INDEX = 5  # TODO envvar

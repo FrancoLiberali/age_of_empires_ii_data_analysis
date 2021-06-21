@@ -12,7 +12,7 @@ KEYS_QUEUE_NAME = os.environ["KEYS_QUEUE_NAME"]
 BARRIER_QUEUE_NAME = os.environ["BARRIER_QUEUE_NAME"]
 REDUCERS_OUTPUT_QUEUE_NAME = os.environ["REDUCERS_OUTPUT_QUEUE_NAME"]
 
-PLAYERS_CHUNK_SIZE = 100  # TODO envvar, es muy importante.
+PLAYERS_CHUNK_SIZE = 102  # TODO envvar, es muy importante.
 
 def send_players_by_key(channel, players_by_key, check_chunk_size=True):
     for key, players in list(players_by_key.items()):
