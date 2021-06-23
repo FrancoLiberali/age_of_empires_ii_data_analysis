@@ -1,0 +1,50 @@
+import os
+
+CHUCKSIZE_IN_LINES_KEY = "CHUCKSIZE_IN_LINES"
+ENTRY_MATCH_TOKEN_INDEX_KEY = "ENTRY_MATCH_TOKEN_INDEX"
+ENTRY_MATCH_AVERAGE_RATING_INDEX_KEY = "ENTRY_MATCH_AVERAGE_RATING_INDEX"
+ENTRY_MATCH_SERVER_INDEX_KEY = "ENTRY_MATCH_SERVER_INDEX"
+ENTRY_MATCH_DURATION_INDEX_KEY = "ENTRY_MATCH_DURATION_INDEX"
+ENTRY_MATCH_LADDER_INDEX_KEY = "ENTRY_MATCH_LADDER_INDEX"
+ENTRY_MATCH_MAP_INDEX_KEY = "ENTRY_MATCH_MAP_INDEX"
+ENTRY_MATCH_MIRROR_INDEX_KEY = "ENTRY_MATCH_MIRROR_INDEX"
+ENTRY_PLAYER_MATCH_INDEX_KEY = "ENTRY_PLAYER_MATCH_INDEX"
+ENTRY_PLAYER_RATING_INDEX_KEY = "ENTRY_PLAYER_RATING_INDEX"
+ENTRY_PLAYER_WINNER_INDEX_KEY = "ENTRY_PLAYER_WINNER_INDEX"
+ENTRY_PLAYER_CIV_INDEX_KEY = "ENTRY_PLAYER_CIV_INDEX"
+
+INT_ENVVARS_KEYS = [
+    CHUCKSIZE_IN_LINES_KEY,
+    ENTRY_MATCH_TOKEN_INDEX_KEY,
+    ENTRY_MATCH_AVERAGE_RATING_INDEX_KEY,
+    ENTRY_MATCH_SERVER_INDEX_KEY,
+    ENTRY_MATCH_DURATION_INDEX_KEY,
+    ENTRY_MATCH_LADDER_INDEX_KEY,
+    ENTRY_MATCH_MAP_INDEX_KEY,
+    ENTRY_MATCH_MIRROR_INDEX_KEY,
+    ENTRY_PLAYER_MATCH_INDEX_KEY,
+    ENTRY_PLAYER_RATING_INDEX_KEY,
+    ENTRY_PLAYER_WINNER_INDEX_KEY,
+    ENTRY_PLAYER_CIV_INDEX_KEY,
+]
+
+def get_config_param(key, logger):
+    try:
+        envvar = os.environ[key]
+        if key in INT_ENVVARS_KEYS:
+            return int(envvar)
+        return envvar
+    except KeyError as e:
+        logger.critical(
+            f"Key was not found in EnvVars. Error: {e}. Aborting")
+        raise e
+    except ValueError as e:
+        logger.critical(
+            f"Key could not be parsed. Error: {e}. Aborting")
+        raise e
+
+def get_config_params(keys, logger):
+    config = {}
+    for key in keys:
+        config[key] = get_config_param(key, logger)
+    return config

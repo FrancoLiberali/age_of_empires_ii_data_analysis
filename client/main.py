@@ -2,6 +2,7 @@
 import csv
 import threading
 
+from config.envvars import CHUCKSIZE_IN_LINES_KEY, ENTRY_MATCH_AVERAGE_RATING_INDEX_KEY, ENTRY_MATCH_DURATION_INDEX_KEY, ENTRY_MATCH_LADDER_INDEX_KEY, ENTRY_MATCH_MAP_INDEX_KEY, ENTRY_MATCH_MIRROR_INDEX_KEY, ENTRY_MATCH_SERVER_INDEX_KEY, ENTRY_MATCH_TOKEN_INDEX_KEY, ENTRY_PLAYER_CIV_INDEX_KEY, ENTRY_PLAYER_MATCH_INDEX_KEY, ENTRY_PLAYER_RATING_INDEX_KEY, ENTRY_PLAYER_WINNER_INDEX_KEY, get_config_param, get_config_params
 from communications.constants import MATCHES_FANOUT_EXCHANGE_NAME, \
     PLAYERS_FANOUT_EXCHANGE_NAME, \
     STRING_LINE_SEPARATOR, \
@@ -12,23 +13,30 @@ from communications.constants import MATCHES_FANOUT_EXCHANGE_NAME, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME, \
     WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
 from communications.rabbitmq_interface import QueueInterface, ExchangeInterface, RabbitMQConnection
+from logger.logger import Logger
 
 MATCHES_CSV_FILE = '/matches.csv'
 MATCH_PLAYERS_CSV_FILE = '/match_players.csv'
-CHUCKSIZE_IN_LINES = 89  # TODO envvar
 
-ENTRY_MATCH_TOKEN_INDEX = 0 # TODO envvar
-ENTRY_MATCH_AVERAGE_RATING_INDEX = 5  # TODO envvar
-ENTRY_MATCH_SERVER_INDEX = 9  # TODO envvar
-ENTRY_MATCH_DURATION_INDEX = 10  # TODO envvar
-ENTRY_MATCH_LADDER_INDEX = 3  # TODO envvar
-ENTRY_MATCH_MAP_INDEX = 6  # TODO envvar
-ENTRY_MATCH_MIRROR_INDEX = 2  # TODO envvar
+logger = Logger(True)
+CHUCKSIZE_IN_LINES = get_config_param(CHUCKSIZE_IN_LINES_KEY, logger)
 
-ENTRY_PLAYER_MATCH_INDEX = 1  # TODO envvar
-ENTRY_PLAYER_RATING_INDEX = 2  # TODO envvar
-ENTRY_PLAYER_WINNER_INDEX = 6  # TODO envvar
-ENTRY_PLAYER_CIV_INDEX = 4 # TODO envvar
+ENTRY_MATCHES_INDEXES = get_config_params([
+        ENTRY_MATCH_TOKEN_INDEX_KEY,
+        ENTRY_MATCH_AVERAGE_RATING_INDEX_KEY,
+        ENTRY_MATCH_SERVER_INDEX_KEY,
+        ENTRY_MATCH_DURATION_INDEX_KEY,
+        ENTRY_MATCH_LADDER_INDEX_KEY,
+        ENTRY_MATCH_MAP_INDEX_KEY,
+        ENTRY_MATCH_MIRROR_INDEX_KEY,
+    ], logger)
+
+ENTRY_PLAYERS_INDEXES = get_config_params([
+        ENTRY_PLAYER_MATCH_INDEX_KEY,
+        ENTRY_PLAYER_RATING_INDEX_KEY,
+        ENTRY_PLAYER_WINNER_INDEX_KEY,
+        ENTRY_PLAYER_CIV_INDEX_KEY,
+    ], logger)
 
 
 def get_receive_matches_ids_function(matches_ids):
@@ -41,8 +49,8 @@ def get_receive_matches_ids_function(matches_ids):
 def get_print_matches_ids_function(matches_ids, message):
     # function currying in python
     def print_matches_ids():
-        print(message)
-        print('\n'.join(matches_ids))
+        logger.info(message)
+        logger.info('\n'.join(matches_ids))
     return print_matches_ids
 
 
@@ -68,13 +76,13 @@ def send_chunk(exchange, chunk):
 def get_line_string_for_matches(line_list):
     return STRING_COLUMN_SEPARATOR.join(
         [
-            line_list[ENTRY_MATCH_TOKEN_INDEX],
-            line_list[ENTRY_MATCH_AVERAGE_RATING_INDEX],
-            line_list[ENTRY_MATCH_SERVER_INDEX],
-            line_list[ENTRY_MATCH_DURATION_INDEX],
-            line_list[ENTRY_MATCH_LADDER_INDEX],
-            line_list[ENTRY_MATCH_MAP_INDEX],
-            line_list[ENTRY_MATCH_MIRROR_INDEX],
+            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_TOKEN_INDEX_KEY]],
+            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_AVERAGE_RATING_INDEX_KEY]],
+            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_SERVER_INDEX_KEY]],
+            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_DURATION_INDEX_KEY]],
+            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_LADDER_INDEX_KEY]],
+            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_MAP_INDEX_KEY]],
+            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_MIRROR_INDEX_KEY]],
         ]
     )
 
@@ -82,10 +90,10 @@ def get_line_string_for_matches(line_list):
 def get_line_string_for_players(line_list):
     return STRING_COLUMN_SEPARATOR.join(
         [
-            line_list[ENTRY_PLAYER_MATCH_INDEX],
-            line_list[ENTRY_PLAYER_RATING_INDEX],
-            line_list[ENTRY_PLAYER_WINNER_INDEX],
-            line_list[ENTRY_PLAYER_CIV_INDEX],
+            line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_MATCH_INDEX_KEY]],
+            line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_RATING_INDEX_KEY]],
+            line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_WINNER_INDEX_KEY]],
+            line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_CIV_INDEX_KEY]],
         ]
     )
 
@@ -111,11 +119,11 @@ def send_matches():
     exchange = ExchangeInterface.newFanout(
         connection, MATCHES_FANOUT_EXCHANGE_NAME)
 
-    print(f"Starting to send matches to server")
+    logger.info("Starting to send matches to server")
     send_file_in_chunks(exchange,
                         MATCHES_CSV_FILE,
                         get_line_string_for_matches)
-    print(f"Finished sending matches to server")
+    logger.info("Finished sending matches to server")
     connection.close()
 
 
@@ -124,7 +132,7 @@ def receive_long_matches_ids():
     queue = QueueInterface(
         connection, LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
 
-    print(f"Starting to receive ids of long matches replied")
+    logger.info("Starting to receive ids of long matches replied")
     get_matches_ids(
         queue,
         "Los IDs de matches que excedieron las dos horas de juego por pro players (average_rating > 2000) en los servers koreacentral, southeastasia y eastus son: "
@@ -137,11 +145,11 @@ def send_players():
     exchange = ExchangeInterface.newFanout(
         connection, PLAYERS_FANOUT_EXCHANGE_NAME)
 
-    print(f"Starting to send players to server")
+    logger.info("Starting to send players to server")
     send_file_in_chunks(exchange,
                         MATCH_PLAYERS_CSV_FILE,
                         get_line_string_for_players)
-    print(f"Finished sending players to server")
+    logger.info("Finished sending players to server")
     connection.close()
 
 
@@ -150,7 +158,7 @@ def receive_weaker_winner_matches_ids():
     queue = QueueInterface(
         connection, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
 
-    print(f"Starting to receive ids of matches with weaker winner replied")
+    logger.info("Starting to receive ids of matches with weaker winner replied")
     get_matches_ids(
         queue,
         "Los IDs de matches en partidas 1v1 donde el ganador tiene un rating 30 % menor al perdedor y el rating del ganador es superior a 1000 son: "
@@ -159,8 +167,8 @@ def receive_weaker_winner_matches_ids():
 
 
 def receive_winner_rate_of_all_civs(queue, received_string, _):
-    print("Porcentaje de victorias por civilización en partidas 1v1(ladder == RM_1v1) con civilizaciones diferentes en mapa arena son:")
-    print(received_string)
+    logger.info("Porcentaje de victorias por civilización en partidas 1v1(ladder == RM_1v1) con civilizaciones diferentes en mapa arena son:")
+    logger.info(received_string)
     queue.stop_consuming()
 
 
@@ -169,14 +177,14 @@ def receive_winner_rate_by_civ():
     queue = QueueInterface(
         connection, WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME)
 
-    print(f"Starting to receive to winner rate by civ replied")
+    logger.info("Starting to receive to winner rate by civ replied")
     queue.consume(receive_winner_rate_of_all_civs)
     connection.close()
 
 
 def receive_top_5_civs_used(queue, received_string, _):
-    print("Top 5 civilizaciones más usadas por pro players(rating > 2000) en team games (ladder == RM_TEAM) en mapa islands son: ")
-    print(received_string)
+    logger.info("Top 5 civilizaciones más usadas por pro players(rating > 2000) en team games (ladder == RM_TEAM) en mapa islands son: ")
+    logger.info(received_string)
     queue.stop_consuming()
 
 def receive_top_5_used_civs():
@@ -184,7 +192,7 @@ def receive_top_5_used_civs():
     queue = QueueInterface(
         connection, TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME)
 
-    print(f"Starting to receive to top 5 civs used replied")
+    logger.info("Starting to receive to top 5 civs used replied")
     queue.consume(receive_top_5_civs_used)
     connection.close()
 
