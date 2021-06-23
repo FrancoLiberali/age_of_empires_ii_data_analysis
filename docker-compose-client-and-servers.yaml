@@ -39,7 +39,7 @@ services:
     entrypoint: python3 /group_by_match/group_by_match_master.py
     environment:
       - PYTHONUNBUFFERED=1
-      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT}
+      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_MATCH}
     networks:
       - age_of_empires_net
     depends_on:
@@ -80,7 +80,7 @@ services:
     entrypoint: python3 /join_matches_and_players/master.py
     environment:
       - PYTHONUNBUFFERED=1
-      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT}
+      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_JOIN_1V1}
       - PLAYERS_INPUT_EXCHANGE_NAME=players_fanout_exchange
       - MATCHES_INPUT_EXCHANGE_NAME=1v1_to_join_master_exchange
       - OUTPUT_EXCHANGE_NAME=1v1_join_master_to_reducers_exchange
@@ -132,7 +132,7 @@ services:
     entrypoint: python3 /join_matches_and_players/master.py
     environment:
       - PYTHONUNBUFFERED=1
-      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT}
+      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_JOIN_TEAM}
       - PLAYERS_INPUT_EXCHANGE_NAME=filter_by_rating_to_team_join_master_exchange
       - MATCHES_INPUT_EXCHANGE_NAME=team_to_join_master_exchange
       - OUTPUT_EXCHANGE_NAME=team_join_master_to_reducers_exchange
@@ -170,7 +170,7 @@ services:
     entrypoint: python3 /group_by_civ/master.py
     environment:
       - PYTHONUNBUFFERED=1
-      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT}
+      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_CIV_1V1}
       - PLAYERS_INPUT_QUEUE_NAME=1v1_join_reducers_to_group_by_civ_master_queue
       - OUTPUT_EXCHANGE_NAME=1v1_group_by_civ_master_to_reducers_exchange
       - KEYS_QUEUE_NAME=1v1_group_by_civ_master_to_reducers_queue
@@ -207,7 +207,7 @@ services:
     entrypoint: python3 /group_by_civ/master.py
     environment:
       - PYTHONUNBUFFERED=1
-      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT}
+      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_CIV_TEAM}
       - PLAYERS_INPUT_QUEUE_NAME=team_join_reducers_to_group_by_civ_master_queue
       - OUTPUT_EXCHANGE_NAME=team_group_by_civ_master_to_reducers_exchange
       - KEYS_QUEUE_NAME=team_group_by_civ_master_to_reducers_queue
