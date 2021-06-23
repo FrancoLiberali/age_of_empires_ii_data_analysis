@@ -4,11 +4,8 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX, \
     JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, \
     JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, \
-    STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
-    STRING_COLUMN_SEPARATOR, \
-    SENTINEL_MESSAGE
-from communications.rabbitmq_interface import send_list_of_columns_to_queue
+    STRING_COLUMN_SEPARATOR # TODO ver como evitar imports de este y el de arriba
 from master_reducers_arq.reducer import main_reducer
 
 INPUT_EXCHANGE_NAME = os.environ["INPUT_EXCHANGE_NAME"]
@@ -18,15 +15,7 @@ OUTPUT_QUEUE_NAME = os.environ["OUTPUT_QUEUE_NAME"]
 
 MATCH_PRESENT = 1
 
-def send_players(channel, players_to_send):
-    if len(players_to_send) > 0:
-        send_list_of_columns_to_queue(
-            channel,
-            OUTPUT_QUEUE_NAME,
-            players_to_send
-        )
-
-def find_received_players_by_matches(channel, players_rows, players_by_match, matches):
+def find_received_players_by_matches(output_queue, players_rows, players_by_match, matches):
     players_to_send = []
     for player_string in players_rows:
         player_columns = player_string.split(
@@ -40,9 +29,10 @@ def find_received_players_by_matches(channel, players_rows, players_by_match, ma
             players_by_match[match_id] = players_of_match
         else:
             players_to_send.append(player_columns)
-    send_players(channel, players_to_send)
+    output_queue.send_list_of_columns(players_to_send)
 
-def find_players_by_received_matches(channel, matches_rows, players_by_match, matches):
+
+def find_players_by_received_matches(output_queue, matches_rows, players_by_match, matches):
     players_to_send = []
     for match_string in matches_rows:
         match_columns = match_string.split(
@@ -54,42 +44,34 @@ def find_players_by_received_matches(channel, matches_rows, players_by_match, ma
         # allready players for that match
         if players_of_that_match is not None:
             players_to_send += players_of_that_match
-    send_players(channel, players_to_send)
+    output_queue.send_list_of_columns(players_to_send)
 
-def get_filter_players_in_matches_function(players_by_match, matches):
+
+def get_filter_players_in_matches_function(players_by_match, matches, output_queue):
     # python function currying
-    def filter_players_in_matches(channel, method, properties, body):
-        chunk_string = body.decode(STRING_ENCODING)
-        if chunk_string == SENTINEL_MESSAGE:
-            print("Sentinel message received, stoping joining players and matches")
-            channel.stop_consuming()
-        else:
-            chunk_rows = chunk_string.split(STRING_LINE_SEPARATOR)
-            identificator = chunk_rows.pop(
-                JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX)
-            if identificator == JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR:
-                find_received_players_by_matches(
-                    channel, chunk_rows, players_by_match, matches)
-            elif identificator == JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR:
-                find_players_by_received_matches(
-                    channel, chunk_rows, players_by_match, matches)
-        channel.basic_ack(delivery_tag=method.delivery_tag)
+    def filter_players_in_matches(queue, received_string, _):
+        chunk_rows = received_string.split(STRING_LINE_SEPARATOR)
+        identificator = chunk_rows.pop(
+            JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX)
+        if identificator == JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR:
+            find_received_players_by_matches(
+                output_queue, chunk_rows, players_by_match, matches)
+        elif identificator == JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR:
+            find_players_by_received_matches(
+                output_queue, chunk_rows, players_by_match, matches)
     return filter_players_in_matches
 
-def join_players_and_matches(channel, private_queue_name, keys):
-    channel.queue_declare(queue=OUTPUT_QUEUE_NAME)
-
+def join_players_and_matches(input_queue, output_queue, keys):
     players_by_match = {}
     matches = {}
-    channel.basic_consume(
-        queue=private_queue_name,
-        on_message_callback=get_filter_players_in_matches_function(
-            players_by_match, matches),
-    )
-    print(
-        f'Starting to receive players and matches in matches with keys {keys} to join them.')
 
-    channel.start_consuming()
+    print(f'Starting to receive players and matches in matches with keys {keys} to join them.')
+    input_queue.consume(
+        get_filter_players_in_matches_function(
+            players_by_match, matches, output_queue
+        )
+    )
+
     print(f'All players and matches in matches with keys {keys} joined.')
     return players_by_match
 
@@ -99,6 +81,7 @@ def main():
         KEYS_QUEUE_NAME,
         BARRIER_QUEUE_NAME,
         INPUT_EXCHANGE_NAME,
+        OUTPUT_QUEUE_NAME,
         join_players_and_matches
     )
 
