@@ -1,7 +1,11 @@
 import pika
+
+from logger.logger import Logger
+from config.envvars import RABBITMQ_HOST_KEY, get_config_param
 from communications.constants import STRING_COLUMN_SEPARATOR, MATCHES_IDS_SEPARATOR, STRING_LINE_SEPARATOR
 
-RABBITMQ_HOST = 'rabbitmq'  # TODO envvar
+logger = Logger(True)
+RABBITMQ_HOST = get_config_param(RABBITMQ_HOST_KEY, logger)
 STRING_ENCODING = 'utf-8'
 SENTINEL_MESSAGE = "SENTINEL"
 

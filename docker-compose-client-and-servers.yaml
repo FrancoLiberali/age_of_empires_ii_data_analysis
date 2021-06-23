@@ -11,6 +11,7 @@ services:
       - ./logger:/client/logger
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - CHUCKSIZE_IN_LINES=100
       - ENTRY_MATCH_TOKEN_INDEX=0
       - ENTRY_MATCH_AVERAGE_RATING_INDEX=5
@@ -37,9 +38,12 @@ services:
     volumes:
       - ./long_matches_server:/long_matches_server
       - ./communications:/long_matches_server/communications
+      - ./config:/long_matches_server/config
+      - ./logger:/long_matches_server/logger
     entrypoint: python3 /long_matches_server/main.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
     networks:
       - age_of_empires_net
 
@@ -50,9 +54,12 @@ services:
       - ./communications:/group_by_match/communications
       - ./partition_function:/group_by_match/partition_function
       - ./master_reducers_arq:/group_by_match/master_reducers_arq
+      - ./config:/group_by_match/config
+      - ./logger:/group_by_match/logger
     entrypoint: python3 /group_by_match/group_by_match_master.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_MATCH}
     networks:
       - age_of_empires_net
@@ -65,9 +72,12 @@ services:
       - ./weaker_winner_server:/group_by_match_reducer
       - ./communications:/group_by_match_reducer/communications
       - ./master_reducers_arq:/group_by_match_reducer/master_reducers_arq
+      - ./config:/group_by_match_reducer/config
+      - ./logger:/group_by_match_reducer/logger
     entrypoint: python3 /group_by_match_reducer/group_by_match_reducer.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
     networks:
       - age_of_empires_net
 
@@ -76,9 +86,12 @@ services:
     volumes:
       - ./filter_by_ladder_and_match:/filter_by_ladder_and_match
       - ./communications:/filter_by_ladder_and_match/communications
+      - ./config:/filter_by_ladder_and_match/config
+      - ./logger:/filter_by_ladder_and_match/logger
     entrypoint: python3 /filter_by_ladder_and_match/main.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - OUTPUT_EXCHANGE_NAME_1V1=1v1_to_join_master_exchange
       - OUTPUT_EXCHANGE_NAME_TEAM=team_to_join_master_exchange
     networks:
@@ -91,9 +104,12 @@ services:
       - ./communications:/join_matches_and_players/communications
       - ./partition_function:/join_matches_and_players/partition_function
       - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
+      - ./config:/join_matches_and_players/config
+      - ./logger:/join_matches_and_players/logger
     entrypoint: python3 /join_matches_and_players/master.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_JOIN_1V1}
       - PLAYERS_INPUT_EXCHANGE_NAME=players_fanout_exchange
       - MATCHES_INPUT_EXCHANGE_NAME=1v1_to_join_master_exchange
@@ -112,9 +128,12 @@ services:
       - ./join_matches_and_players:/join_matches_and_players
       - ./communications:/join_matches_and_players/communications
       - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
+      - ./config:/join_matches_and_players/config
+      - ./logger:/join_matches_and_players/logger
     entrypoint: python3 /join_matches_and_players/reducer.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - INPUT_EXCHANGE_NAME=1v1_join_master_to_reducers_exchange
       - BARRIER_QUEUE_NAME=1v1_join_reducers_barrier
       - KEYS_QUEUE_NAME=1v1_join_master_to_reducers_queue
@@ -127,9 +146,12 @@ services:
     volumes:
       - ./filter_by_rating:/filter_by_rating
       - ./communications:/filter_by_rating/communications
+      - ./config:/filter_by_rating/config
+      - ./logger:/filter_by_rating/logger
     entrypoint: python3 /filter_by_rating/main.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - OUTPUT_EXCHANGE_NAME=filter_by_rating_to_team_join_master_exchange
     networks:
       - age_of_empires_net
@@ -143,9 +165,12 @@ services:
       - ./communications:/join_matches_and_players/communications
       - ./partition_function:/join_matches_and_players/partition_function
       - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
+      - ./config:/join_matches_and_players/config
+      - ./logger:/join_matches_and_players/logger
     entrypoint: python3 /join_matches_and_players/master.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_JOIN_TEAM}
       - PLAYERS_INPUT_EXCHANGE_NAME=filter_by_rating_to_team_join_master_exchange
       - MATCHES_INPUT_EXCHANGE_NAME=team_to_join_master_exchange
@@ -164,9 +189,12 @@ services:
       - ./join_matches_and_players:/join_matches_and_players
       - ./communications:/join_matches_and_players/communications
       - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
+      - ./config:/join_matches_and_players/config
+      - ./logger:/join_matches_and_players/logger
     entrypoint: python3 /join_matches_and_players/reducer.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - INPUT_EXCHANGE_NAME=team_join_master_to_reducers_exchange
       - BARRIER_QUEUE_NAME=team_join_reducers_barrier
       - KEYS_QUEUE_NAME=team_join_master_to_reducers_queue
@@ -181,9 +209,12 @@ services:
       - ./communications:/group_by_civ/communications
       - ./partition_function:/group_by_civ/partition_function
       - ./master_reducers_arq:/group_by_civ/master_reducers_arq
+      - ./config:/group_by_civ/config
+      - ./logger:/group_by_civ/logger
     entrypoint: python3 /group_by_civ/master.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_CIV_1V1}
       - PLAYERS_INPUT_QUEUE_NAME=1v1_join_reducers_to_group_by_civ_master_queue
       - OUTPUT_EXCHANGE_NAME=1v1_group_by_civ_master_to_reducers_exchange
@@ -201,9 +232,12 @@ services:
       - ./group_by_civ:/group_by_civ
       - ./communications:/group_by_civ/communications
       - ./master_reducers_arq:/group_by_civ/master_reducers_arq
+      - ./config:/group_by_civ/config
+      - ./logger:/group_by_civ/logger
     entrypoint: python3 /group_by_civ/count_wins_and_defeats_reducer.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - INPUT_EXCHANGE_NAME=1v1_group_by_civ_master_to_reducers_exchange
       - BARRIER_QUEUE_NAME=1v1_group_by_civ_reducers_barrier
       - KEYS_QUEUE_NAME=1v1_group_by_civ_master_to_reducers_queue
@@ -218,9 +252,12 @@ services:
       - ./communications:/group_by_civ/communications
       - ./partition_function:/group_by_civ/partition_function
       - ./master_reducers_arq:/group_by_civ/master_reducers_arq
+      - ./config:/group_by_civ/config
+      - ./logger:/group_by_civ/logger
     entrypoint: python3 /group_by_civ/master.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_CIV_TEAM}
       - PLAYERS_INPUT_QUEUE_NAME=team_join_reducers_to_group_by_civ_master_queue
       - OUTPUT_EXCHANGE_NAME=team_group_by_civ_master_to_reducers_exchange
@@ -238,9 +275,12 @@ services:
       - ./group_by_civ:/group_by_civ
       - ./communications:/group_by_civ/communications
       - ./master_reducers_arq:/group_by_civ/master_reducers_arq
+      - ./config:/group_by_civ/config
+      - ./logger:/group_by_civ/logger
     entrypoint: python3 /group_by_civ/count_times_used_reducer.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - INPUT_EXCHANGE_NAME=team_group_by_civ_master_to_reducers_exchange
       - BARRIER_QUEUE_NAME=team_group_by_civ_reducers_barrier
       - KEYS_QUEUE_NAME=team_group_by_civ_master_to_reducers_queue
@@ -253,9 +293,12 @@ services:
     volumes:
       - ./civs_calculators:/winner_rate_calculator
       - ./communications:/winner_rate_calculator/communications
+      - ./config:/winner_rate_calculator/config
+      - ./logger:/winner_rate_calculator/logger
     entrypoint: python3 /winner_rate_calculator/winner_rate_calculator.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - INPUT_QUEUE_NAME=1v1_group_by_civ_reducers_to_winner_rate_calculador_queue
     networks:
       - age_of_empires_net
@@ -265,9 +308,12 @@ services:
     volumes:
       - ./civs_calculators:/top_5_times_used_calculator
       - ./communications:/top_5_times_used_calculator/communications
+      - ./config:/top_5_times_used_calculator/config
+      - ./logger:/top_5_times_used_calculator/logger
     entrypoint: python3 /top_5_times_used_calculator/top_5_times_used_calculator.py
     environment:
       - PYTHONUNBUFFERED=1
+      - RABBITMQ_HOST=rabbitmq
       - INPUT_QUEUE_NAME=team_group_by_civ_reducers_to_top_5_calculador_queue
     networks:
       - age_of_empires_net
