@@ -1,19 +1,15 @@
 #!/usr/bin/env python3
-import pika
 from datetime import datetime, time
 
 from communications.constants import FROM_CLIENT_MATCH_AVERAGE_RATING_INDEX, \
     FROM_CLIENT_MATCH_DURATION_INDEX, \
     FROM_CLIENT_MATCH_SERVER_INDEX, \
     FROM_CLIENT_MATCH_TOKEN_INDEX, \
-    STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
     MATCHES_FANOUT_EXCHANGE_NAME, \
-    LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
-    RABBITMQ_HOST, \
-    SENTINEL_MESSAGE
-from communications.rabbitmq_interface import send_matches_ids, send_sentinel_to_queue
+    LONG_MATCHES_TO_CLIENT_QUEUE_NAME
+from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, get_on_sentinel_send_sentinel_callback_function
 
 MINIMUM_AVERAGE_RATING = 2000 # TODO envvar
 MINIMUM_DURATION = time(hour=2)  # TODO envvar
@@ -42,48 +38,31 @@ def is_matched(columns):
     )
 
 
-def filter_by_duration_average_rating_and_server(channel, method, properties, body):
-    chunk_string = body.decode(STRING_ENCODING)
-    if chunk_string == SENTINEL_MESSAGE:
-        print("Sentinel message received, stoping receiving matches")
-        channel.stop_consuming()
-        print("Sending sentinel to client to notify that all matches ids has been sended")
-        send_sentinel_to_queue(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
-    else:
+def get_filter_by_duration_average_rating_and_server_function(output_queue):
+    def filter_by_duration_average_rating_and_server(queue, received_string, _):
         matches_ids = []
-        for row in chunk_string.split(STRING_LINE_SEPARATOR):
+        for row in received_string.split(STRING_LINE_SEPARATOR):
             columns = row.split(STRING_COLUMN_SEPARATOR)
             if is_matched(columns):
                 matches_ids.append(columns[FROM_CLIENT_MATCH_TOKEN_INDEX])
-        if (len(matches_ids) > 0):
-            send_matches_ids(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME, matches_ids)
-    channel.basic_ack(delivery_tag=method.delivery_tag)
+        output_queue.send_matches_ids(matches_ids)
+    return filter_by_duration_average_rating_and_server
 
 def main():
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST))
-
-    channel = connection.channel()
-
-    channel.exchange_declare(
-        exchange=MATCHES_FANOUT_EXCHANGE_NAME,
-        exchange_type='fanout')
-    result = channel.queue_declare(queue='')
-    private_queue_name = result.method.queue
-    channel.queue_bind(
-        exchange=MATCHES_FANOUT_EXCHANGE_NAME,
-        queue=private_queue_name
-    )
-
-    channel.queue_declare(queue=LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
-
-    channel.basic_consume(
-        queue=private_queue_name,
-        on_message_callback=filter_by_duration_average_rating_and_server,
-    )
+    connection = RabbitMQConnection()
+    input_exchage = ExchangeInterface.newFanout(
+        connection, MATCHES_FANOUT_EXCHANGE_NAME)
+    input_queue = QueueInterface.newPrivate(connection)
+    input_queue.bind(input_exchage)
+    
+    output_queue = QueueInterface(
+        connection, LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
 
     print('Starting to receive matches to filter')
-    channel.start_consuming()
+    input_queue.consume(
+        get_filter_by_duration_average_rating_and_server_function(output_queue),
+        get_on_sentinel_send_sentinel_callback_function(output_queue)
+    )
     connection.close()
 
 if __name__ == '__main__':

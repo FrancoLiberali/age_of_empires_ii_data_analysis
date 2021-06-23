@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
 import csv
-import pika
 import threading
 
 from communications.constants import MATCHES_FANOUT_EXCHANGE_NAME, \
     PLAYERS_FANOUT_EXCHANGE_NAME, \
-    STRING_ENCODING, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
     MATCHES_IDS_SEPARATOR, \
     LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
-    RABBITMQ_HOST, \
-    SENTINEL_MESSAGE, TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME, \
+    TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME, \
     WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import send_sentinel_to_exchange, send_string_to_exchange
+from communications.rabbitmq_interface import QueueInterface, ExchangeInterface, RabbitMQConnection
 
 MATCHES_CSV_FILE = '/matches.csv'
 MATCH_PLAYERS_CSV_FILE = '/match_players.csv'
@@ -33,37 +30,39 @@ ENTRY_PLAYER_RATING_INDEX = 2  # TODO envvar
 ENTRY_PLAYER_WINNER_INDEX = 6  # TODO envvar
 ENTRY_PLAYER_CIV_INDEX = 4 # TODO envvar
 
+
+def get_receive_matches_ids_function(matches_ids):
+    # function currying in python
+    def receive_matches_ids(queue, received_string, _):
+        for match_id in received_string.split(MATCHES_IDS_SEPARATOR):
+            matches_ids.append(match_id)
+    return receive_matches_ids
+
 def get_print_matches_ids_function(matches_ids, message):
     # function currying in python
-    def print_matches_ids(channel, method, properties, body):
-        received_string = body.decode(STRING_ENCODING)
-        if received_string == SENTINEL_MESSAGE:
-            print(message)
-            print('\n'.join(matches_ids))
-            channel.stop_consuming()
-        else:
-            for match_id in received_string.split(MATCHES_IDS_SEPARATOR):
-                matches_ids.append(match_id)
+    def print_matches_ids():
+        print(message)
+        print('\n'.join(matches_ids))
     return print_matches_ids
 
 
-def get_matches_ids(channel, queue_name, message):
+def get_matches_ids(queue, message):
     matches_ids = []
-    channel.basic_consume(
-        queue=queue_name,
-        on_message_callback=get_print_matches_ids_function(
+    queue.consume(
+        get_receive_matches_ids_function(
+            matches_ids
+        ),
+        get_print_matches_ids_function(
             matches_ids,
             message
         ),
-        auto_ack=True
     )
-    channel.start_consuming()
 
 
-def send_chunk(channel, exchange_name, chunk):
+def send_chunk(exchange, chunk):
     if len(chunk) > 0:
         chunk_string = STRING_LINE_SEPARATOR.join(chunk)
-        send_string_to_exchange(channel, exchange_name, chunk_string)
+        exchange.send_string(chunk_string)
 
 
 def get_line_string_for_matches(line_list):
@@ -91,7 +90,7 @@ def get_line_string_for_players(line_list):
     )
 
 
-def send_file_in_chunks(channel, exchange_name, file_path, get_line_string_function):
+def send_file_in_chunks(exchange, file_path, get_line_string_function):
     chunk = []
     with open(file_path) as csvfile:
         reader = csv.reader(csvfile)
@@ -100,24 +99,20 @@ def send_file_in_chunks(channel, exchange_name, file_path, get_line_string_funct
                 # file header
                 continue
             if (i % CHUCKSIZE_IN_LINES == 0 and i > 0):
-                send_chunk(channel, exchange_name, chunk)
+                send_chunk(exchange, chunk)
                 del chunk[:]  # delete from memory
             chunk.append(get_line_string_function(line))
-        send_chunk(channel, exchange_name, chunk)
-        send_sentinel_to_exchange(channel, exchange_name)
+        send_chunk(exchange, chunk)
+        exchange.send_sentinel()
 
 
 def send_matches():
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
-    channel.exchange_declare(
-        exchange=MATCHES_FANOUT_EXCHANGE_NAME,
-        exchange_type='fanout')
+    connection = RabbitMQConnection()
+    exchange = ExchangeInterface.newFanout(
+        connection, MATCHES_FANOUT_EXCHANGE_NAME)
 
     print(f"Starting to send matches to server")
-    send_file_in_chunks(channel,
-                        MATCHES_FANOUT_EXCHANGE_NAME,
+    send_file_in_chunks(exchange,
                         MATCHES_CSV_FILE,
                         get_line_string_for_matches)
     print(f"Finished sending matches to server")
@@ -125,28 +120,25 @@ def send_matches():
 
 
 def receive_long_matches_ids():
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
-    channel.queue_declare(queue=LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
+    connection = RabbitMQConnection()
+    queue = QueueInterface(
+        connection, LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
 
     print(f"Starting to receive ids of long matches replied")
-    get_matches_ids(channel, LONG_MATCHES_TO_CLIENT_QUEUE_NAME,
-                    "Los IDs de matches que excedieron las dos horas de juego por pro players (average_rating > 2000) en los servers koreacentral, southeastasia y eastus son: ")
+    get_matches_ids(
+        queue,
+        "Los IDs de matches que excedieron las dos horas de juego por pro players (average_rating > 2000) en los servers koreacentral, southeastasia y eastus son: "
+    )
     connection.close()
 
 
 def send_players():
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
-    channel.exchange_declare(
-        exchange=PLAYERS_FANOUT_EXCHANGE_NAME,
-        exchange_type='fanout')
+    connection = RabbitMQConnection()
+    exchange = ExchangeInterface.newFanout(
+        connection, PLAYERS_FANOUT_EXCHANGE_NAME)
 
     print(f"Starting to send players to server")
-    send_file_in_chunks(channel,
-                        PLAYERS_FANOUT_EXCHANGE_NAME,
+    send_file_in_chunks(exchange,
                         MATCH_PLAYERS_CSV_FILE,
                         get_line_string_for_players)
     print(f"Finished sending players to server")
@@ -154,59 +146,46 @@ def send_players():
 
 
 def receive_weaker_winner_matches_ids():
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
-    channel.queue_declare(queue=WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
+    connection = RabbitMQConnection()
+    queue = QueueInterface(
+        connection, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
 
     print(f"Starting to receive ids of matches with weaker winner replied")
-    get_matches_ids(channel, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME,
-                    "Los IDs de matches en partidas 1v1 donde el ganador tiene un rating 30 % menor al perdedor y el rating del ganador es superior a 1000 son: ")
+    get_matches_ids(
+        queue,
+        "Los IDs de matches en partidas 1v1 donde el ganador tiene un rating 30 % menor al perdedor y el rating del ganador es superior a 1000 son: "
+    )
     connection.close()
 
 
-def receive_winner_rate_of_all_civs(channel, method, properties, body):
-    received_string = body.decode(STRING_ENCODING)
+def receive_winner_rate_of_all_civs(queue, received_string, _):
     print("Porcentaje de victorias por civilización en partidas 1v1(ladder == RM_1v1) con civilizaciones diferentes en mapa arena son:")
     print(received_string)
-    channel.stop_consuming()
+    queue.stop_consuming()
 
 
 def receive_winner_rate_by_civ():
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
-    channel.queue_declare(queue=WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME)
+    connection = RabbitMQConnection()
+    queue = QueueInterface(
+        connection, WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME)
 
     print(f"Starting to receive to winner rate by civ replied")
-    channel.basic_consume(
-        queue=WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME,
-        on_message_callback=receive_winner_rate_of_all_civs,
-        auto_ack=True
-    )
-    channel.start_consuming()
+    queue.consume(receive_winner_rate_of_all_civs)
     connection.close()
 
 
-def receive_top_5_civs_used(channel, method, properties, body):
-    received_string = body.decode(STRING_ENCODING)
+def receive_top_5_civs_used(queue, received_string, _):
     print("Top 5 civilizaciones más usadas por pro players(rating > 2000) en team games (ladder == RM_TEAM) en mapa islands son: ")
     print(received_string)
-    channel.stop_consuming()
+    queue.stop_consuming()
 
 def receive_top_5_used_civs():
-    connection = pika.BlockingConnection(
-        pika.ConnectionParameters(host=RABBITMQ_HOST))
-    channel = connection.channel()
-    channel.queue_declare(queue=TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME)
+    connection = RabbitMQConnection()
+    queue = QueueInterface(
+        connection, TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME)
 
     print(f"Starting to receive to top 5 civs used replied")
-    channel.basic_consume(
-        queue=TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME,
-        on_message_callback=receive_top_5_civs_used,
-        auto_ack=True
-    )
-    channel.start_consuming()
+    queue.consume(receive_top_5_civs_used)
     connection.close()
 
 
