@@ -1,10 +1,7 @@
-RABBITMQ_HOST = 'rabbitmq' # TODO envvar
-
-STRING_ENCODING = 'utf-8'
 STRING_LINE_SEPARATOR = '\n'
-STRING_COLUMN_SEPARATOR = ', '
+STRING_COLUMN_SEPARATOR = ', '  # TODO que esten en rabbitmq_interface
 
-MATCHES_IDS_SEPARATOR = ', '
+MATCHES_IDS_SEPARATOR = ', ' # TODO unificar con el de arriba
 
 MATCHES_FANOUT_EXCHANGE_NAME = 'matches_fanout_exchange'
 LONG_MATCHES_TO_CLIENT_QUEUE_NAME = 'long_matches_to_client'
@@ -17,8 +14,6 @@ WEAKER_WINNER_TO_CLIENT_QUEUE_NAME = 'weaker_winner_to_client'
 
 WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME = 'winner_rate_calculator_to_client_queue'
 TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME = 'top_5_used_calculator_to_client_queue'
-
-SENTINEL_MESSAGE = "SENTINEL"
 
 SENTINEL_KEY = "sentinel"
 PLAYERS_KEY = "" # no key because it comes directly from PLAYERS_FANOUT_EXCHANGE_NAME
@@ -43,5 +38,3 @@ FROM_CLIENT_PLAYER_CIV_INDEX = 3
 
 PLAYER_WINNER = "True"
 PLAYER_LOSER = "False"
-
-
