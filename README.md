@@ -5,42 +5,42 @@ Sistema distribuidos que procesa el detalle de partidas jugadas en el videojuego
 ## Modo de uso
 
 1. Construir las imagenes base de proyecto
-```bash
-cd base-images/ && ./build.sh
-```
+	```bash
+	cd base-images/ && ./build.sh
+	```
 
 2. Agregar los datasets de entrada en una carpeta llamada datasets en la raíz de este proyecto. Los datasets de ejemplo se encuentran en https://www.kaggle.com/ezetowers/aoe2-tp2-draft/data.
 
 3. Levantar el proyecto
 
-```bash
-cd ..
-./start_up.sh n1 n2 n3 n4 n5
-```
+	```bash
+	cd ..
+	./start_up.sh n1 n2 n3 n4 n5
+	```
 
-n1: Cantidad de group by match reducer
-n2: Cantidad de join matches and players reducer 1v1
-n3: Cantidad group players of matches by civ reducer 1v1
-n4: Cantidad de join matches and players reducer team
-n5: Cantidad group players of matches by civ reducer team
+	* n1: Cantidad de group by match reducer
+	* n2: Cantidad de join matches and players reducer 1v1
+	* n3: Cantidad group players of matches by civ reducer 1v1
+	* n4: Cantidad de join matches and players reducer team
+	* n5: Cantidad group players of matches by civ reducer team
 
 4. Al terminar la ejecución las salidas estarán impresas en la pantalla junto al resto de logs. Para ver solo las salidas usar
 
-```bash
-./watch_results.sh
-```
+	```bash
+	./watch_results.sh
+	```
 
-El resultado esperado para los datasets de ejemplo se puede encontrar en:
-1. long_matches_results.txt
-2. weaker_winner_results.txt
-3. winner_rate_by_civ_results.txt
-4. top5_civs_results.txt
+	El resultado esperado para los datasets de ejemplo se puede encontrar en:
+	* long_matches_results.txt
+	* weaker_winner_results.txt
+	* winner_rate_by_civ_results.txt
+	* top5_civs_results.txt
 
 5. Para eliminar los containers de docker creados:
 
-```bash
-./stop_all.sh
-```
+	```bash
+	./stop_all.sh
+	```
 
 ## Configuraciones de despliegue
 Son configurables desde `docker-compose-client-and-servers.yaml`
@@ -52,8 +52,8 @@ Son configurables desde `docker-compose-client-and-servers.yaml`
 * `ROWS_CHUNK_SIZE`: Permite modificar el tamaño de los chunks en los que se envían los matches y players por key desde el join master a los reducers. Menor tamaño significa más uso de colas.
 
 ### Otros
-* Para el cliente, es posible configurar el indice en la que se encuentran cada una de las columnas en los archivos de entrada por si estos llegacen a cambiar entre datasets. Los mismos son los parametros: ENTRY_MATCH_TOKEN_INDEX , ENTRY_MATCH_AVERAGE_RATING_INDEX, ENTRY_MATCH_SERVER_INDEX, ENTRY_MATCH_DURATION_INDEX, ENTRY_MATCH_LADDER_INDEX, ENTRY_MATCH_MAP_INDEX, ENTRY_MATCH_MIRROR_INDEX, ENTRY_PLAYER_MATCH_INDEX, ENTRY_PLAYER_RATING_INDEX, ENTRY_PLAYER_WINNER_INDEX, ENTRY_PLAYER_CIV_INDEX
-* Para los filtros, es posible configurar los valores por lo que se filtra, por si estos llegacen a cambiar de formato entre datasets o si se desea dar un comportamiento distinto a los mismos. Los mismos son: MINIMUM_AVERAGE_RATING, MINIMUM_DURATION, DURATION_FORMAT, KOREA_CENTRAL_SERVER, SOUTH_EAST_ASIA_SERVER, EAST_US_SERVER, MIN_RATING, LADDER_1V1, MAP_ARENA, NO_MIRROR, LADDER_TEAM, MAP_ISLANDS, MINIMUM_RATING, MINIMUM_RATING_PORCENTAGE_DIFF
+* Para el cliente, es posible configurar el indice en la que se encuentran cada una de las columnas en los archivos de entrada por si estos llegacen a cambiar entre datasets. Los mismos son los parametros: `ENTRY_MATCH_TOKEN_INDEX` , `ENTRY_MATCH_AVERAGE_RATING_INDEX`, `ENTRY_MATCH_SERVER_INDEX`, `ENTRY_MATCH_DURATION_INDEX`, `ENTRY_MATCH_LADDER_INDEX`, `ENTRY_MATCH_MAP_INDEX`, `ENTRY_MATCH_MIRROR_INDEX`, `ENTRY_PLAYER_MATCH_INDEX`, `ENTRY_PLAYER_RATING_INDEX`, `ENTRY_PLAYER_WINNER_INDEX`, `ENTRY_PLAYER_CIV_INDEX`
+* Para los filtros, es posible configurar los valores por lo que se filtra, por si estos llegacen a cambiar de formato entre datasets o si se desea dar un comportamiento distinto a los mismos. Los mismos son: `MINIMUM_AVERAGE_RATING`, `MINIMUM_DURATION`, `DURATION_FORMAT`, `KOREA_CENTRAL_SERVER`, `SOUTH_EAST_ASIA_SERVER`, `EAST_US_SERVER`, `MIN_RATING`, `LADDER_1V1`, `MAP_ARENA`, `NO_MIRROR`, `LADDER_TEAM`, `MAP_ISLANDS`, `MINIMUM_RATING`, `MINIMUM_RATING_PORCENTAGE_DIFF`
 
 ## Requerimientos funcionales
 El procesamiento de los datos debe brindar la siguiente información:
