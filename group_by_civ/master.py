@@ -1,18 +1,13 @@
-import os
-
+from config.envvars import BARRIER_QUEUE_NAME_KEY, KEYS_QUEUE_NAME_KEY, OUTPUT_EXCHANGE_NAME_KEY, PLAYERS_CHUNK_SIZE_KEY, PLAYERS_INPUT_QUEUE_NAME_KEY, REDUCERS_OUTPUT_QUEUE_NAME_KEY, get_config_param
 from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
     STRING_COLUMN_SEPARATOR, \
     STRING_LINE_SEPARATOR
 from communications.rabbitmq_interface import QueueInterface
 from master_reducers_arq.master import main_master
+from logger.logger import Logger
 
-PLAYERS_INPUT_QUEUE_NAME = os.environ["PLAYERS_INPUT_QUEUE_NAME"]
-OUTPUT_EXCHANGE_NAME = os.environ["OUTPUT_EXCHANGE_NAME"]
-KEYS_QUEUE_NAME = os.environ["KEYS_QUEUE_NAME"]
-BARRIER_QUEUE_NAME = os.environ["BARRIER_QUEUE_NAME"]
-REDUCERS_OUTPUT_QUEUE_NAME = os.environ["REDUCERS_OUTPUT_QUEUE_NAME"]
-
-PLAYERS_CHUNK_SIZE = 102  # TODO envvar, es muy importante.
+logger = Logger()
+PLAYERS_CHUNK_SIZE = get_config_param(PLAYERS_CHUNK_SIZE_KEY, logger)
 
 def send_players_by_key(output_exchange, players_by_key, check_chunk_size=True):
     for key, players in list(players_by_key.items()):
@@ -69,14 +64,17 @@ def receive_and_dispach_players(entry_queue, output_exchange, partition_function
 
 
 def declare_input_queue(connection):
-    return QueueInterface(connection, PLAYERS_INPUT_QUEUE_NAME)
+    return QueueInterface(
+        connection,
+        get_config_param(PLAYERS_INPUT_QUEUE_NAME_KEY, logger)
+    )
 
 def main():
     main_master(
-        KEYS_QUEUE_NAME,
-        BARRIER_QUEUE_NAME,
-        REDUCERS_OUTPUT_QUEUE_NAME,
-        OUTPUT_EXCHANGE_NAME,
+        get_config_param(KEYS_QUEUE_NAME_KEY, logger),
+        get_config_param(BARRIER_QUEUE_NAME_KEY, logger),
+        get_config_param(REDUCERS_OUTPUT_QUEUE_NAME_KEY, logger),
+        get_config_param(OUTPUT_EXCHANGE_NAME_KEY, logger),
         declare_input_queue,
         receive_and_dispach_players
     )

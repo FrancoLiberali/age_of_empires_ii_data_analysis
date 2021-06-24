@@ -1,3 +1,4 @@
+from config.envvars import MINIMUM_RATING_KEY, MINIMUM_RATING_PORCENTAGE_DIFF_KEY, get_config_param
 from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
     FROM_CLIENT_PLAYER_RATING_INDEX, \
     FROM_CLIENT_PLAYER_WINNER_INDEX, \
@@ -10,6 +11,9 @@ from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
     STRING_COLUMN_SEPARATOR, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
 from master_reducers_arq.reducer import main_reducer
+from logger.logger import Logger
+
+logger = Logger()
 
 INPUT_EXCHANGE_NAME = GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME
 BARRIER_QUEUE_NAME = GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME
@@ -35,9 +39,6 @@ def get_group_by_match_function(players_by_match):
     return group_by_match
 
 
-MINIMUM_RATING_PROCENTAGE_DIFF = 30 # TODO envvar
-
-
 def process_player_by_match(input_queue, output_queue, keys):
     players_by_match = {}
     print(f'Starting to receive players in matches with keys {keys} to group them.')
@@ -49,9 +50,10 @@ def process_player_by_match(input_queue, output_queue, keys):
     return players_by_match
 
 
-MINIMUM_RATING = 1000  # TODO envvar
-
 def filter_players_by_weaker_winner(players_by_match):
+    minimun_rating = get_config_param(MINIMUM_RATING_KEY, logger)
+    minimun_rating_porcentage_diff = get_config_param(
+        MINIMUM_RATING_PORCENTAGE_DIFF_KEY, logger)
     matches_ids = []
     for match_id, players_list in players_by_match.items():
         # final check that all matches are of two players
@@ -66,7 +68,7 @@ def filter_players_by_weaker_winner(players_by_match):
                 loser_rating = int(loser[FROM_CLIENT_PLAYER_RATING_INDEX])
                 rating_diff = (loser_rating - winner_rating) / \
                     winner_rating * 100
-                if winner_rating > MINIMUM_RATING and rating_diff > MINIMUM_RATING_PROCENTAGE_DIFF:
+                if winner_rating > minimun_rating and rating_diff > minimun_rating_porcentage_diff:
                     matches_ids.append(match_id)
     return matches_ids
 

@@ -44,6 +44,12 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - RABBITMQ_HOST=rabbitmq
+      - MINIMUM_AVERAGE_RATING=2000
+      - MINIMUM_DURATION=2
+      - DURATION_FORMAT=%H:%M:%S
+      - KOREA_CENTRAL_SERVER=koreacentral
+      - SOUTH_EAST_ASIA_SERVER=southeastasia
+      - EAST_US_SERVER=eastus
     networks:
       - age_of_empires_net
 
@@ -61,6 +67,7 @@ services:
       - PYTHONUNBUFFERED=1
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_MATCH}
+      - PLAYERS_CHUNK_SIZE=100
     networks:
       - age_of_empires_net
     depends_on:
@@ -78,6 +85,8 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - RABBITMQ_HOST=rabbitmq
+      - MINIMUM_RATING=1000
+      - MINIMUM_RATING_PORCENTAGE_DIFF=30
     networks:
       - age_of_empires_net
 
@@ -92,6 +101,11 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - RABBITMQ_HOST=rabbitmq
+      - LADDER_1V1=RM_1v1
+      - MAP_ARENA=arena
+      - NO_MIRROR=False
+      - LADDER_TEAM=RM_TEAM
+      - MAP_ISLANDS=islands
       - OUTPUT_EXCHANGE_NAME_1V1=1v1_to_join_master_exchange
       - OUTPUT_EXCHANGE_NAME_TEAM=team_to_join_master_exchange
     networks:
@@ -111,6 +125,7 @@ services:
       - PYTHONUNBUFFERED=1
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_JOIN_1V1}
+      - ROWS_CHUNK_SIZE=100
       - PLAYERS_INPUT_EXCHANGE_NAME=players_fanout_exchange
       - MATCHES_INPUT_EXCHANGE_NAME=1v1_to_join_master_exchange
       - OUTPUT_EXCHANGE_NAME=1v1_join_master_to_reducers_exchange
@@ -153,6 +168,7 @@ services:
       - PYTHONUNBUFFERED=1
       - RABBITMQ_HOST=rabbitmq
       - OUTPUT_EXCHANGE_NAME=filter_by_rating_to_team_join_master_exchange
+      - MIN_RATING=2000
     networks:
       - age_of_empires_net
     depends_on:
@@ -172,6 +188,7 @@ services:
       - PYTHONUNBUFFERED=1
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_JOIN_TEAM}
+      - ROWS_CHUNK_SIZE=100
       - PLAYERS_INPUT_EXCHANGE_NAME=filter_by_rating_to_team_join_master_exchange
       - MATCHES_INPUT_EXCHANGE_NAME=team_to_join_master_exchange
       - OUTPUT_EXCHANGE_NAME=team_join_master_to_reducers_exchange
@@ -216,6 +233,7 @@ services:
       - PYTHONUNBUFFERED=1
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_CIV_1V1}
+      - PLAYERS_CHUNK_SIZE=100
       - PLAYERS_INPUT_QUEUE_NAME=1v1_join_reducers_to_group_by_civ_master_queue
       - OUTPUT_EXCHANGE_NAME=1v1_group_by_civ_master_to_reducers_exchange
       - KEYS_QUEUE_NAME=1v1_group_by_civ_master_to_reducers_queue
@@ -259,6 +277,7 @@ services:
       - PYTHONUNBUFFERED=1
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_CIV_TEAM}
+      - PLAYERS_CHUNK_SIZE=100
       - PLAYERS_INPUT_QUEUE_NAME=team_join_reducers_to_group_by_civ_master_queue
       - OUTPUT_EXCHANGE_NAME=team_group_by_civ_master_to_reducers_exchange
       - KEYS_QUEUE_NAME=team_group_by_civ_master_to_reducers_queue

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from config.envvars import DURATION_FORMAT_KEY, EAST_US_SERVER_KEY, KOREA_CENTRAL_SERVER_KEY, MINIMUM_AVERAGE_RATING_KEY, MINIMUM_DURATION_KEY, SOUTH_EAST_ASIA_SERVER_KEY, get_config_param
 from datetime import datetime, time
 
 from communications.constants import FROM_CLIENT_MATCH_AVERAGE_RATING_INDEX, \
@@ -10,11 +11,21 @@ from communications.constants import FROM_CLIENT_MATCH_AVERAGE_RATING_INDEX, \
     MATCHES_FANOUT_EXCHANGE_NAME, \
     LONG_MATCHES_TO_CLIENT_QUEUE_NAME
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, get_on_sentinel_send_sentinel_callback_function
+from logger.logger import Logger
 
-MINIMUM_AVERAGE_RATING = 2000 # TODO envvar
-MINIMUM_DURATION = time(hour=2)  # TODO envvar
-REQUIRED_SERVERS = ['koreacentral', 'southeastasia', 'eastus']  # TODO envvar
-DURATION_FORMAT = '%H:%M:%S' # TODO envvar
+logger = Logger()
+MINIMUM_AVERAGE_RATING = get_config_param(MINIMUM_AVERAGE_RATING_KEY, logger)
+MINIMUM_DURATION = time(
+    hour=get_config_param(
+        MINIMUM_DURATION_KEY, logger
+    )
+)
+REQUIRED_SERVERS = [
+    get_config_param(KOREA_CENTRAL_SERVER_KEY, logger),
+    get_config_param(SOUTH_EAST_ASIA_SERVER_KEY, logger),
+    get_config_param(EAST_US_SERVER_KEY, logger)
+]
+DURATION_FORMAT = get_config_param(DURATION_FORMAT_KEY, logger)
 
 def is_average_rating_enough(average_rating_string):
     # TODO catchear exceptions

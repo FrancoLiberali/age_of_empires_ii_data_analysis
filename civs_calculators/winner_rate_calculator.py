@@ -1,11 +1,9 @@
-import os
-
+from config.envvars import INPUT_QUEUE_NAME_KEY, get_config_param
 from communications.constants import STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
     WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
 from communications.rabbitmq_interface import QueueInterface, RabbitMQConnection
-
-INPUT_QUEUE_NAME = os.environ["INPUT_QUEUE_NAME"]
+from logger.logger import Logger
 
 FROM_GROUP_BY_CIV_CIV_INDEX = 0
 FROM_GROUP_BY_CIV_WINS_INDEX = 1
@@ -28,9 +26,13 @@ def get_group_wins_and_defeats_by_civ_function(wins_and_defeats_by_civ):
 
 
 def main():
+    logger = Logger()
+
     connection = RabbitMQConnection()
     input_queue = QueueInterface(
-        connection, INPUT_QUEUE_NAME)
+        connection,
+        get_config_param(INPUT_QUEUE_NAME_KEY, logger)
+    )
     output_queue = QueueInterface(
         connection, WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME)
 

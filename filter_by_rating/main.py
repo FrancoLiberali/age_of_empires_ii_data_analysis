@@ -1,5 +1,4 @@
-import os
-
+from config.envvars import MIN_RATING_KEY, OUTPUT_EXCHANGE_NAME_KEY, get_config_param
 from communications.constants import FROM_CLIENT_PLAYER_CIV_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
     FROM_CLIENT_PLAYER_RATING_INDEX, \
@@ -7,10 +6,10 @@ from communications.constants import FROM_CLIENT_PLAYER_CIV_INDEX, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, get_on_sentinel_send_sentinel_callback_function
+from logger.logger import Logger
 
-MIN_RATING = 2000
-OUTPUT_EXCHANGE_NAME = os.environ["OUTPUT_EXCHANGE_NAME"]
-
+logger = Logger()
+MIN_RATING = get_config_param(MIN_RATING_KEY, logger)
 
 # TODO codigo repetido con el otr filtro de matches, misma estructura para filtro
 
@@ -46,7 +45,9 @@ def main():
     input_queue.bind(input_exchage)
 
     output_exchage = ExchangeInterface.newFanout(
-        connection, OUTPUT_EXCHANGE_NAME)
+        connection,
+        get_config_param(OUTPUT_EXCHANGE_NAME_KEY, logger)
+    )
 
     print(f'Starting to receive players to filter by rating > {MIN_RATING}')
     input_queue.consume(

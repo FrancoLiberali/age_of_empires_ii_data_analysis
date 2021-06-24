@@ -1,3 +1,4 @@
+from config.envvars import PLAYERS_CHUNK_SIZE_KEY, get_config_param
 from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, \
@@ -8,13 +9,10 @@ from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface
 from master_reducers_arq.master import main_master
+from logger.logger import Logger
 
-OUTPUT_EXCHANGE_NAME = GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME
-KEYS_QUEUE_NAME = GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME
-BARRIER_QUEUE_NAME = GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME
-REDUCERS_OUTPUT_QUEUE_NAME = WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
-
-PLAYERS_CHUNK_SIZE = 100 # TODO envvar, es muy importante
+logger = Logger()
+PLAYERS_CHUNK_SIZE = get_config_param(PLAYERS_CHUNK_SIZE_KEY, logger)
 
 
 def send_players_by_key(output_exchange, players_by_key, check_chunk_size=True):
@@ -85,10 +83,10 @@ def subscribe_to_entries(connection):
 
 def main():
     main_master(
-        KEYS_QUEUE_NAME,
-        BARRIER_QUEUE_NAME,
-        REDUCERS_OUTPUT_QUEUE_NAME,
-        OUTPUT_EXCHANGE_NAME,
+        GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME,
+        GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME,
+        WEAKER_WINNER_TO_CLIENT_QUEUE_NAME,
+        GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME,
         subscribe_to_entries,
         receive_and_dispach_players
     )

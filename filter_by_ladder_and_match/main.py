@@ -1,42 +1,42 @@
-import os
-
+from config.envvars import LADDER_1V1_KEY, LADDER_TEAM_KEY, MAP_ARENA_KEY, MAP_ISLANDS_KEY, NO_MIRROR_KEY, OUTPUT_EXCHANGE_NAME_1V1_KEY, OUTPUT_EXCHANGE_NAME_TEAM_KEY, get_config_params
 from communications.constants import MATCHES_KEY, \
     FROM_CLIENT_MATCH_TOKEN_INDEX, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
     MATCHES_FANOUT_EXCHANGE_NAME
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection
+from logger.logger import Logger
 
+logger = Logger()
+CONFIG_1V1 = get_config_params([
+        LADDER_1V1_KEY,
+        MAP_ARENA_KEY,
+        NO_MIRROR_KEY,
+    ], logger)
 
-LADDER_1V1 = 'RM_1v1'  # TODO envvar
-MAP_ARENA = 'arena' # TODO envvar
-NO_MIRROR = 'False' # TODO envvar, TODO sacar de aca al hacer el punto 4
-
-LADDER_TEAM = 'RM_TEAM'  # TODO envvar
-MAP_ISLANDS = 'islands'  # TODO envvar
+CONFIG_TEAM = get_config_params([
+    LADDER_TEAM_KEY,
+    MAP_ISLANDS_KEY,
+], logger)
 
 LADDER_INDEX_INDEX = 4
 MAP_INDEX = 5
 MIRROR_INDEX = 6
 
-OUTPUT_EXCHANGE_NAME_1V1 = os.environ["OUTPUT_EXCHANGE_NAME_1V1"]
-OUTPUT_EXCHANGE_NAME_TEAM = os.environ["OUTPUT_EXCHANGE_NAME_TEAM"]
-
-
 # TODO codigo repetido con el otr filtro de matches, misma estructura para filtro
 
 def is_matched_1v1(columns):
     return (
-        columns[LADDER_INDEX_INDEX] == LADDER_1V1 and
-        columns[MAP_INDEX] == MAP_ARENA and
-        columns[MIRROR_INDEX] == NO_MIRROR
+        columns[LADDER_INDEX_INDEX] == CONFIG_1V1[LADDER_1V1_KEY] and
+        columns[MAP_INDEX] == CONFIG_1V1[MAP_ARENA_KEY] and
+        columns[MIRROR_INDEX] == CONFIG_1V1[NO_MIRROR_KEY]
     )
 
 
 def is_matched_team(columns):
     return (
-        columns[LADDER_INDEX_INDEX] == LADDER_TEAM and
-        columns[MAP_INDEX] == MAP_ISLANDS
+        columns[LADDER_INDEX_INDEX] == CONFIG_TEAM[LADDER_TEAM_KEY] and
+        columns[MAP_INDEX] == CONFIG_TEAM[MAP_ISLANDS_KEY]
     )
 
 def add_to_matches(matches_list, match_columns):
@@ -72,6 +72,10 @@ def get_filter_by_ladder_and_map_function(output_1v1_exchage, output_team_exchag
 
 def main():
     # TODO codigo repetido con long matches
+    output_exchanges = get_config_params([
+        OUTPUT_EXCHANGE_NAME_1V1_KEY,
+        OUTPUT_EXCHANGE_NAME_TEAM_KEY,
+    ], logger)
     connection = RabbitMQConnection()
 
     input_exchage = ExchangeInterface.newFanout(
@@ -79,11 +83,11 @@ def main():
 
     input_queue = QueueInterface.newPrivate(connection)
     input_queue.bind(input_exchage)
-    
+
     output_1v1_exchage = ExchangeInterface.newDirect(
-        connection, OUTPUT_EXCHANGE_NAME_1V1)
+        connection, output_exchanges[OUTPUT_EXCHANGE_NAME_1V1_KEY])
     output_team_exchage = ExchangeInterface.newDirect(
-        connection, OUTPUT_EXCHANGE_NAME_TEAM)
+        connection, output_exchanges[OUTPUT_EXCHANGE_NAME_TEAM_KEY])
 
     print(f'Starting to receive matches to filter by ladder, map and mirror')
     input_queue.consume(

@@ -1,4 +1,4 @@
-import os
+from config.envvars import BARRIER_QUEUE_NAME_KEY, INPUT_EXCHANGE_NAME_KEY, KEYS_QUEUE_NAME_KEY, OUTPUT_QUEUE_NAME_KEY, get_config_param
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
     JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX, \
@@ -7,11 +7,9 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR # TODO ver como evitar imports de este y el de arriba
 from master_reducers_arq.reducer import main_reducer
+from logger.logger import Logger
 
-INPUT_EXCHANGE_NAME = os.environ["INPUT_EXCHANGE_NAME"]
-BARRIER_QUEUE_NAME = os.environ["BARRIER_QUEUE_NAME"]
-KEYS_QUEUE_NAME = os.environ["KEYS_QUEUE_NAME"]
-OUTPUT_QUEUE_NAME = os.environ["OUTPUT_QUEUE_NAME"]
+logger = Logger()
 
 MATCH_PRESENT = 1
 
@@ -78,10 +76,10 @@ def join_players_and_matches(input_queue, output_queue, keys):
 
 def main():
     main_reducer(
-        KEYS_QUEUE_NAME,
-        BARRIER_QUEUE_NAME,
-        INPUT_EXCHANGE_NAME,
-        OUTPUT_QUEUE_NAME,
+        get_config_param(KEYS_QUEUE_NAME_KEY, logger),
+        get_config_param(BARRIER_QUEUE_NAME_KEY, logger),
+        get_config_param(INPUT_EXCHANGE_NAME_KEY, logger),
+        get_config_param(OUTPUT_QUEUE_NAME_KEY, logger),
         join_players_and_matches
     )
 

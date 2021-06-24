@@ -1,11 +1,9 @@
-import os
-
+from config.envvars import INPUT_QUEUE_NAME_KEY, get_config_param
 from communications.constants import STRING_LINE_SEPARATOR, \
     STRING_COLUMN_SEPARATOR, \
     TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME
 from communications.rabbitmq_interface import QueueInterface, RabbitMQConnection
-
-INPUT_QUEUE_NAME = os.environ["INPUT_QUEUE_NAME"]
+from logger.logger import Logger
 
 FROM_GROUP_BY_CIV_CIV_INDEX = 0
 FROM_GROUP_BY_CIV_TIMES_INDEX = 1
@@ -30,9 +28,13 @@ TOP_LEN = 5
 
 # TODO codigo repetido con el otro calculator
 def main():
+    logger = Logger()
+
     connection = RabbitMQConnection()
     input_queue = QueueInterface(
-        connection, INPUT_QUEUE_NAME)
+        connection,
+        get_config_param(INPUT_QUEUE_NAME_KEY, logger)
+    )
     output_queue = QueueInterface(
         connection, TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME)
 

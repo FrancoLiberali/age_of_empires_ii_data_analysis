@@ -1,8 +1,10 @@
-import os
-
+from config.envvars import REDUCERS_AMOUNT_KEY, get_config_param
 from communications.constants import SENTINEL_KEY
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection
 from partition_function.partition_function import PartitionFunction
+from logger.logger import Logger
+
+logger = Logger()
 
 
 def get_receive_sentinel_function(sentinel_received_amount, sentinels_objetive):
@@ -57,8 +59,7 @@ def main_master(
     reducers_output_queue = QueueInterface(
         connection, reducers_output_queue_name)
 
-    # TODO usar codigo unificado cuando esté
-    reducers_amount = int(os.environ["REDUCERS_AMOUNT"])
+    reducers_amount = get_config_param(REDUCERS_AMOUNT_KEY, logger)
     partition_function = PartitionFunction(reducers_amount)
 
     send_keys_to_reducers(keys_queue, partition_function,

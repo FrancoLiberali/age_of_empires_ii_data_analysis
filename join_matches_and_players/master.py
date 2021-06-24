@@ -1,5 +1,4 @@
-import os
-
+from config.envvars import BARRIER_QUEUE_NAME_KEY, KEYS_QUEUE_NAME_KEY, MATCHES_INPUT_EXCHANGE_NAME_KEY, OUTPUT_EXCHANGE_NAME_KEY, PLAYERS_INPUT_EXCHANGE_NAME_KEY, REDUCERS_OUTPUT_QUEUE_NAME_KEY, ROWS_CHUNK_SIZE_KEY, get_config_param
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
     JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, \
@@ -10,19 +9,10 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     STRING_LINE_SEPARATOR
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface
 from master_reducers_arq.master import main_master
+from logger.logger import Logger
 
-MATCHES_INPUT_EXCHANGE_NAME = os.environ["MATCHES_INPUT_EXCHANGE_NAME"]
-PLAYERS_INPUT_EXCHANGE_NAME = os.environ["PLAYERS_INPUT_EXCHANGE_NAME"]
-
-# TODO usar codigo unificado cuando esté
-OUTPUT_EXCHANGE_NAME = os.environ["OUTPUT_EXCHANGE_NAME"]
-KEYS_QUEUE_NAME = os.environ["KEYS_QUEUE_NAME"]
-BARRIER_QUEUE_NAME = os.environ["BARRIER_QUEUE_NAME"]
-REDUCERS_OUTPUT_QUEUE_NAME = os.environ["REDUCERS_OUTPUT_QUEUE_NAME"]
-
-
-ROWS_CHUNK_SIZE = 95  # TODO envvar, es muy importante
-
+logger = Logger()
+ROWS_CHUNK_SIZE = get_config_param(ROWS_CHUNK_SIZE_KEY, logger)
 
 def send_dict_by_key(output_exchange, dict_by_key, tag_to_send, check_chunk_size=True):
     for key, rows in list(dict_by_key.items()):
@@ -113,9 +103,13 @@ def receive_and_dispach_players_and_matches(entry_queue, output_exchange, partit
 
 def subscribe_to_entries(connection):
     matches_input_exchage = ExchangeInterface.newDirect(
-        connection, MATCHES_INPUT_EXCHANGE_NAME)
+        connection,
+        get_config_param(MATCHES_INPUT_EXCHANGE_NAME_KEY, logger)
+    )
     players_input_exchage = ExchangeInterface.newFanout(
-        connection, PLAYERS_INPUT_EXCHANGE_NAME)
+        connection,
+        get_config_param(PLAYERS_INPUT_EXCHANGE_NAME_KEY, logger)
+    )
 
     input_queue = QueueInterface.newPrivate(connection)
     input_queue.bind(matches_input_exchage, MATCHES_KEY)
@@ -125,10 +119,10 @@ def subscribe_to_entries(connection):
 
 def main():
     main_master(
-        KEYS_QUEUE_NAME,
-        BARRIER_QUEUE_NAME,
-        REDUCERS_OUTPUT_QUEUE_NAME,
-        OUTPUT_EXCHANGE_NAME,
+        get_config_param(KEYS_QUEUE_NAME_KEY, logger),
+        get_config_param(BARRIER_QUEUE_NAME_KEY, logger),
+        get_config_param(REDUCERS_OUTPUT_QUEUE_NAME_KEY, logger),
+        get_config_param(OUTPUT_EXCHANGE_NAME_KEY, logger),
         subscribe_to_entries,
         receive_and_dispach_players_and_matches
     )
