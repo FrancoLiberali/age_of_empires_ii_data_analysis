@@ -30,17 +30,17 @@ services:
       - filter_by_ladder_map_and_mirror
       - join_master_1v1
       - filter_by_rating
-      - long_matches_server
+      - filter_by_avr_rating_duration_and_server
       - group_by_match_master
 
-  long_matches_server:
+  filter_by_avr_rating_duration_and_server:
     image: rabbitmq-python-base:0.0.1
     volumes:
-      - ./long_matches_server:/long_matches_server
-      - ./communications:/long_matches_server/communications
-      - ./config:/long_matches_server/config
-      - ./logger:/long_matches_server/logger
-    entrypoint: python3 /long_matches_server/main.py
+      - ./filters:/age_of_empires_ii_da
+      - ./communications:/age_of_empires_ii_da/communications
+      - ./config:/age_of_empires_ii_da/config
+      - ./logger:/age_of_empires_ii_da/logger
+    entrypoint: python3 /age_of_empires_ii_da/filter_by_avr_rating_duration_and_server.py
     environment:
       - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
@@ -53,51 +53,32 @@ services:
     networks:
       - age_of_empires_net
 
-  group_by_match_master:
+  filter_by_rating:
     image: rabbitmq-python-base:0.0.1
     volumes:
-      - ./weaker_winner_server:/group_by_match
-      - ./communications:/group_by_match/communications
-      - ./partition_function:/group_by_match/partition_function
-      - ./master_reducers_arq:/group_by_match/master_reducers_arq
-      - ./config:/group_by_match/config
-      - ./logger:/group_by_match/logger
-    entrypoint: python3 /group_by_match/group_by_match_master.py
+      - ./filters:/age_of_empires_ii_da
+      - ./communications:/age_of_empires_ii_da/communications
+      - ./config:/age_of_empires_ii_da/config
+      - ./logger:/age_of_empires_ii_da/logger
+    entrypoint: python3 /age_of_empires_ii_da/filter_by_rating.py
     environment:
       - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
-      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_MATCH}
-      - PLAYERS_CHUNK_SIZE=100
+      - OUTPUT_EXCHANGE_NAME=filter_by_rating_to_team_join_master_exchange
+      - MIN_RATING=2000
     networks:
       - age_of_empires_net
     depends_on:
-      - group_by_match_reducer
-
-  group_by_match_reducer:
-    image: rabbitmq-python-base:0.0.1
-    volumes:
-      - ./weaker_winner_server:/group_by_match_reducer
-      - ./communications:/group_by_match_reducer/communications
-      - ./master_reducers_arq:/group_by_match_reducer/master_reducers_arq
-      - ./config:/group_by_match_reducer/config
-      - ./logger:/group_by_match_reducer/logger
-    entrypoint: python3 /group_by_match_reducer/group_by_match_reducer.py
-    environment:
-      - TZ=America/Argentina/Buenos_Aires
-      - RABBITMQ_HOST=rabbitmq
-      - MINIMUM_RATING=1000
-      - MINIMUM_RATING_PORCENTAGE_DIFF=30
-    networks:
-      - age_of_empires_net
+      - join_master_team
 
   filter_by_ladder_map_and_mirror:
     image: rabbitmq-python-base:0.0.1
     volumes:
-      - ./filter_by_ladder_map_and_mirror:/filter_by_ladder_map_and_mirror
-      - ./communications:/filter_by_ladder_map_and_mirror/communications
-      - ./config:/filter_by_ladder_map_and_mirror/config
-      - ./logger:/filter_by_ladder_map_and_mirror/logger
-    entrypoint: python3 /filter_by_ladder_map_and_mirror/main.py
+      - ./filters:/age_of_empires_ii_da
+      - ./communications:/age_of_empires_ii_da/communications
+      - ./config:/age_of_empires_ii_da/config
+      - ./logger:/age_of_empires_ii_da/logger
+    entrypoint: python3 /age_of_empires_ii_da/filter_by_ladder_map_and_mirror.py
     environment:
       - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
@@ -111,12 +92,47 @@ services:
     networks:
       - age_of_empires_net
 
+  group_by_match_master:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./group_by_match:/age_of_empires_ii_da
+      - ./communications:/age_of_empires_ii_da/communications
+      - ./master_reducers_arq:/age_of_empires_ii_da/master_reducers_arq
+      - ./config:/age_of_empires_ii_da/config
+      - ./logger:/age_of_empires_ii_da/logger
+    entrypoint: python3 /age_of_empires_ii_da/master.py
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      - RABBITMQ_HOST=rabbitmq
+      - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_MATCH}
+      - PLAYERS_CHUNK_SIZE=100
+    networks:
+      - age_of_empires_net
+    depends_on:
+      - group_by_match_reducer
+
+  group_by_match_reducer:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./group_by_match:/age_of_empires_ii_da
+      - ./communications:/age_of_empires_ii_da/communications
+      - ./master_reducers_arq:/age_of_empires_ii_da/master_reducers_arq
+      - ./config:/age_of_empires_ii_da/config
+      - ./logger:/age_of_empires_ii_da/logger
+    entrypoint: python3 /age_of_empires_ii_da/reducer.py
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      - RABBITMQ_HOST=rabbitmq
+      - MINIMUM_RATING=1000
+      - MINIMUM_RATING_PORCENTAGE_DIFF=30
+    networks:
+      - age_of_empires_net
+
   join_master_1v1:
     image: rabbitmq-python-base:0.0.1
     volumes:
       - ./join_matches_and_players:/join_matches_and_players
       - ./communications:/join_matches_and_players/communications
-      - ./partition_function:/join_matches_and_players/partition_function
       - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
       - ./config:/join_matches_and_players/config
       - ./logger:/join_matches_and_players/logger
@@ -156,30 +172,11 @@ services:
     networks:
       - age_of_empires_net
 
-  filter_by_rating:
-    image: rabbitmq-python-base:0.0.1
-    volumes:
-      - ./filter_by_rating:/filter_by_rating
-      - ./communications:/filter_by_rating/communications
-      - ./config:/filter_by_rating/config
-      - ./logger:/filter_by_rating/logger
-    entrypoint: python3 /filter_by_rating/main.py
-    environment:
-      - TZ=America/Argentina/Buenos_Aires
-      - RABBITMQ_HOST=rabbitmq
-      - OUTPUT_EXCHANGE_NAME=filter_by_rating_to_team_join_master_exchange
-      - MIN_RATING=2000
-    networks:
-      - age_of_empires_net
-    depends_on:
-      - join_master_team
-
   join_master_team:
     image: rabbitmq-python-base:0.0.1
     volumes:
       - ./join_matches_and_players:/join_matches_and_players
       - ./communications:/join_matches_and_players/communications
-      - ./partition_function:/join_matches_and_players/partition_function
       - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
       - ./config:/join_matches_and_players/config
       - ./logger:/join_matches_and_players/logger
@@ -224,7 +221,6 @@ services:
     volumes:
       - ./group_by_civ:/group_by_civ
       - ./communications:/group_by_civ/communications
-      - ./partition_function:/group_by_civ/partition_function
       - ./master_reducers_arq:/group_by_civ/master_reducers_arq
       - ./config:/group_by_civ/config
       - ./logger:/group_by_civ/logger
@@ -268,7 +264,6 @@ services:
     volumes:
       - ./group_by_civ:/group_by_civ
       - ./communications:/group_by_civ/communications
-      - ./partition_function:/group_by_civ/partition_function
       - ./master_reducers_arq:/group_by_civ/master_reducers_arq
       - ./config:/group_by_civ/config
       - ./logger:/group_by_civ/logger

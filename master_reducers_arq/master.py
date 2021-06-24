@@ -1,8 +1,8 @@
 from config.envvars import REDUCERS_AMOUNT_KEY, get_config_param
 from communications.constants import SENTINEL_KEY
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection
-from partition_function.partition_function import PartitionFunction
 from logger.logger import Logger
+from master_reducers_arq.partition_function import PartitionFunction
 
 logger = Logger()
 
