@@ -26,7 +26,6 @@ REQUIRED_SERVERS = [
 DURATION_FORMAT = get_config_param(DURATION_FORMAT_KEY, logger)
 
 def is_average_rating_enough(average_rating_string):
-    # TODO catchear exceptions
     return (average_rating_string != '' and int(average_rating_string) > MINIMUM_AVERAGE_RATING)
 
 def is_duration_enough(duration_string):

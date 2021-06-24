@@ -9,10 +9,7 @@ from logger.logger import Logger
 logger = Logger()
 MIN_RATING = get_config_param(MIN_RATING_KEY, logger)
 
-# TODO codigo repetido con el otr filtro de matches, misma estructura para filtro
-
 def is_matched(columns):
-    # TODO codigo repetido con long matches server el rating
     rating = columns[FROM_CLIENT_PLAYER_RATING_INDEX]
     return rating != '' and int(rating) > MIN_RATING
 
@@ -35,7 +32,6 @@ def get_filter_by_rating_function(output_exchange):
 
 
 def main():
-    # TODO codigo repetido con group by match
     connection = RabbitMQConnection()
     input_exchage = ExchangeInterface.newFanout(
         connection, PLAYERS_FANOUT_EXCHANGE_NAME)

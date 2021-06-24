@@ -21,8 +21,6 @@ LADDER_INDEX_INDEX = 4
 MAP_INDEX = 5
 MIRROR_INDEX = 6
 
-# TODO codigo repetido con el otr filtro de matches, misma estructura para filtro
-
 def is_matched_1v1(columns):
     return (
         columns[LADDER_INDEX_INDEX] == CONFIG_1V1[LADDER_1V1_KEY] and
@@ -69,7 +67,6 @@ def get_filter_by_ladder_map_and_mirror_function(output_1v1_exchage, output_team
 
 
 def main():
-    # TODO codigo repetido con long matches
     output_exchanges = get_config_params([
         OUTPUT_EXCHANGE_NAME_1V1_KEY,
         OUTPUT_EXCHANGE_NAME_TEAM_KEY,

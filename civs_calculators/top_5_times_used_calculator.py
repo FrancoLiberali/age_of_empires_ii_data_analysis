@@ -24,7 +24,6 @@ CIV_INDEX = 0
 TIMES_INDEX = 1
 TOP_LEN = 5
 
-# TODO codigo repetido con el otro calculator
 def main():
     logger = Logger()
 

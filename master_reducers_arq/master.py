@@ -8,7 +8,6 @@ logger = Logger()
 
 
 def get_receive_sentinel_function(sentinel_received_amount, sentinels_objetive):
-    # TODO codigo repetido con join matches and players que tiene algo similar
     # python function currying
     def receive_sentinel():
         sentinel_received_amount[0] += 1

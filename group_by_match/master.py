@@ -14,7 +14,6 @@ PLAYERS_CHUNK_SIZE = get_config_param(PLAYERS_CHUNK_SIZE_KEY, logger)
 
 
 def send_players_by_key(output_exchange, players_by_key, check_chunk_size=True):
-    # TODO codigo repetido con group by civ
     for key, players in list(players_by_key.items()):
         if len(players) > PLAYERS_CHUNK_SIZE or not check_chunk_size:
             output_exchange.send_list_as_rows(players, key)
@@ -35,7 +34,6 @@ def add_to_players_by_key(output_exchange, partition_function, players_by_key, r
 
 
 def get_on_sentinel_callback_function(output_exchange, players_by_key):
-    # TODO codigo repetido con group by civ
     def on_sentinel_callback():
         # send the remaining players
         send_players_by_key(output_exchange, players_by_key, False)
