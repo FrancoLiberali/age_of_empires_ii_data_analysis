@@ -1,10 +1,8 @@
 from config.envvars import LADDER_1V1_KEY, LADDER_TEAM_KEY, MAP_ARENA_KEY, MAP_ISLANDS_KEY, NO_MIRROR_KEY, OUTPUT_EXCHANGE_NAME_1V1_KEY, OUTPUT_EXCHANGE_NAME_TEAM_KEY, get_config_params
 from communications.constants import MATCHES_KEY, \
     FROM_CLIENT_MATCH_TOKEN_INDEX, \
-    STRING_LINE_SEPARATOR, \
-    STRING_COLUMN_SEPARATOR, \
     MATCHES_FANOUT_EXCHANGE_NAME
-from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection
+from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, split_columns_into_list, split_rows_into_list
 from logger.logger import Logger
 
 logger = Logger()
@@ -59,8 +57,8 @@ def get_filter_by_ladder_and_map_function(output_1v1_exchage, output_team_exchag
     def filter_by_ladder_and_map(queue, received_string, _):
         matches_1v1_matched = []
         matches_team_matched = []
-        for row in received_string.split(STRING_LINE_SEPARATOR):
-            columns = row.split(STRING_COLUMN_SEPARATOR)
+        for row in split_rows_into_list(received_string):
+            columns = split_columns_into_list(row)
             if is_matched_1v1(columns):
                 add_to_matches(matches_1v1_matched, columns)
             elif is_matched_team(columns):

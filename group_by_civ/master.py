@@ -1,8 +1,6 @@
 from config.envvars import BARRIER_QUEUE_NAME_KEY, KEYS_QUEUE_NAME_KEY, OUTPUT_EXCHANGE_NAME_KEY, PLAYERS_CHUNK_SIZE_KEY, PLAYERS_INPUT_QUEUE_NAME_KEY, REDUCERS_OUTPUT_QUEUE_NAME_KEY, get_config_param
-from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
-    STRING_COLUMN_SEPARATOR, \
-    STRING_LINE_SEPARATOR
-from communications.rabbitmq_interface import QueueInterface
+from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX
+from communications.rabbitmq_interface import QueueInterface, split_columns_into_list, split_rows_into_list
 from master_reducers_arq.master import main_master
 from logger.logger import Logger
 
@@ -12,8 +10,7 @@ PLAYERS_CHUNK_SIZE = get_config_param(PLAYERS_CHUNK_SIZE_KEY, logger)
 def send_players_by_key(output_exchange, players_by_key, check_chunk_size=True):
     for key, players in list(players_by_key.items()):
         if len(players) > PLAYERS_CHUNK_SIZE or not check_chunk_size:
-            players_string = STRING_LINE_SEPARATOR.join(players)
-            output_exchange.send_string(players_string, key)
+            output_exchange.send_list_as_rows(players, key)
             players_by_key.pop(key)
             del players
 
@@ -21,7 +18,7 @@ def send_players_by_key(output_exchange, players_by_key, check_chunk_size=True):
 def add_to_players_by_key(output_exchange, partition_function, players_by_key, received_players):
     for player_string in received_players:
         key = partition_function.get_key(
-            player_string.split(STRING_COLUMN_SEPARATOR)[FROM_CLIENT_PLAYER_MATCH_INDEX]
+            split_columns_into_list(player_string)[FROM_CLIENT_PLAYER_MATCH_INDEX]
         )
         rows_list = players_by_key.get(key, [])
         rows_list.append(player_string)
@@ -40,7 +37,7 @@ def get_on_sentinel_callback_function(output_exchange, players_by_key):
 def get_dispach_to_reducers_function(output_exchange, players_by_key, partition_function):
     def dispach_to_reducers(queue, received_string, _):
         received_players = [
-            player_string for player_string in received_string.split(STRING_LINE_SEPARATOR)]
+            player_string for player_string in split_rows_into_list(received_string)]
         add_to_players_by_key(
             output_exchange,
             partition_function,

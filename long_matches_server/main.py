@@ -6,11 +6,9 @@ from communications.constants import FROM_CLIENT_MATCH_AVERAGE_RATING_INDEX, \
     FROM_CLIENT_MATCH_DURATION_INDEX, \
     FROM_CLIENT_MATCH_SERVER_INDEX, \
     FROM_CLIENT_MATCH_TOKEN_INDEX, \
-    STRING_LINE_SEPARATOR, \
-    STRING_COLUMN_SEPARATOR, \
     MATCHES_FANOUT_EXCHANGE_NAME, \
     LONG_MATCHES_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, get_on_sentinel_send_sentinel_callback_function
+from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, get_on_sentinel_send_sentinel_callback_function, split_columns_into_list, split_rows_into_list
 from logger.logger import Logger
 
 logger = Logger()
@@ -52,11 +50,11 @@ def is_matched(columns):
 def get_filter_by_duration_average_rating_and_server_function(output_queue):
     def filter_by_duration_average_rating_and_server(queue, received_string, _):
         matches_ids = []
-        for row in received_string.split(STRING_LINE_SEPARATOR):
-            columns = row.split(STRING_COLUMN_SEPARATOR)
+        for row in split_rows_into_list(received_string):
+            columns = split_columns_into_list(row)
             if is_matched(columns):
                 matches_ids.append(columns[FROM_CLIENT_MATCH_TOKEN_INDEX])
-        output_queue.send_matches_ids(matches_ids)
+        output_queue.send_list_as_rows(matches_ids)
     return filter_by_duration_average_rating_and_server
 
 def main():

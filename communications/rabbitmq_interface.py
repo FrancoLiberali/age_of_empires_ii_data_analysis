@@ -2,12 +2,13 @@ import pika
 
 from logger.logger import Logger
 from config.envvars import RABBITMQ_HOST_KEY, get_config_param
-from communications.constants import STRING_COLUMN_SEPARATOR, MATCHES_IDS_SEPARATOR, STRING_LINE_SEPARATOR
 
 logger = Logger()
 RABBITMQ_HOST = get_config_param(RABBITMQ_HOST_KEY, logger)
 STRING_ENCODING = 'utf-8'
 SENTINEL_MESSAGE = "SENTINEL"
+STRING_LINE_SEPARATOR = '\n'
+STRING_COLUMN_SEPARATOR = ', '
 
 class RabbitMQConnection:
     def __init__(self):
@@ -35,15 +36,14 @@ class RabbitMQInterface:
             ]
         )
 
+    def send_list_as_rows(self, list, routing_key=''):
+        if len(list) > 0:
+            self.send_string(STRING_LINE_SEPARATOR.join(list), routing_key)
+
     def send_list_of_columns(self, list_of_columns, routing_key=''):
         if len(list_of_columns) > 0:
             list_string = self._get_string_from_list_of_columns(list_of_columns)
             self.send_string(list_string, routing_key)
-
-    def send_matches_ids(self, matches_ids, routing_key=''):
-        if len(matches_ids) > 0:
-            matches_ids_string = MATCHES_IDS_SEPARATOR.join(matches_ids)
-            self.send_string(matches_ids_string, routing_key)
 
 
 class ExchangeInterface(RabbitMQInterface):
@@ -134,3 +134,9 @@ def get_on_sentinel_send_sentinel_callback_function(output):
             "Sending sentinel to next stage to notify that all data has been sended")
         output.send_sentinel()
     return on_sentinel_callback
+
+def split_columns_into_list(columns_string):
+    return columns_string.split(STRING_COLUMN_SEPARATOR)
+
+def split_rows_into_list(rows_string):
+    return rows_string.split(STRING_LINE_SEPARATOR)

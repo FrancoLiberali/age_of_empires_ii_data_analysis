@@ -1,8 +1,6 @@
 from config.envvars import INPUT_QUEUE_NAME_KEY, get_config_param
-from communications.constants import STRING_LINE_SEPARATOR, \
-    STRING_COLUMN_SEPARATOR, \
-    WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import QueueInterface, RabbitMQConnection
+from communications.constants import WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
+from communications.rabbitmq_interface import QueueInterface, RabbitMQConnection, split_columns_into_list, split_rows_into_list
 from logger.logger import Logger
 
 FROM_GROUP_BY_CIV_CIV_INDEX = 0
@@ -14,8 +12,8 @@ DEFEATS_INDEX = 1
 
 def get_group_wins_and_defeats_by_civ_function(wins_and_defeats_by_civ):
     def group_wins_and_defeats_by_civ(queue, received_string, _):
-        for civ_wins_and_defeats in received_string.split(STRING_LINE_SEPARATOR):
-            columns = civ_wins_and_defeats.split(STRING_COLUMN_SEPARATOR)
+        for civ_wins_and_defeats in split_rows_into_list(received_string):
+            columns = split_columns_into_list(civ_wins_and_defeats)
             civ = columns[FROM_GROUP_BY_CIV_CIV_INDEX]
             wins_and_defeats_of_civ = wins_and_defeats_by_civ.get(
                 civ, [0, 0])

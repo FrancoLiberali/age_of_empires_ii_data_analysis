@@ -32,7 +32,6 @@ def subscribe_to_keys(connection, keys, input_exchange_name):
     logger.info(f"Finished subscribing to keys")
     return input_queue
 
-
 def main_reducer(
         keys_queue_name,
         barrier_queue_name,

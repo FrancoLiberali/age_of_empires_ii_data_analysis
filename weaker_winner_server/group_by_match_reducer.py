@@ -1,3 +1,4 @@
+from communications.rabbitmq_interface import split_columns_into_list, split_rows_into_list
 from config.envvars import MINIMUM_RATING_KEY, MINIMUM_RATING_PORCENTAGE_DIFF_KEY, get_config_param
 from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
     FROM_CLIENT_PLAYER_RATING_INDEX, \
@@ -7,8 +8,6 @@ from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
     GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, \
     PLAYER_LOSER, \
     PLAYER_WINNER, \
-    STRING_LINE_SEPARATOR, \
-    STRING_COLUMN_SEPARATOR, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
 from master_reducers_arq.reducer import main_reducer
 from logger.logger import Logger
@@ -26,8 +25,8 @@ def can_match_be_1_vs_1(players_list, new_player):
 def get_group_by_match_function(players_by_match):
     # python function currying
     def group_by_match(queue, received_string, _):
-        for player_string in received_string.split(STRING_LINE_SEPARATOR):
-            player_columns = player_string.split(STRING_COLUMN_SEPARATOR)
+        for player_string in split_rows_into_list(received_string):
+            player_columns = split_columns_into_list(player_string)
             match_id = player_columns[FROM_CLIENT_PLAYER_MATCH_INDEX]
             players_of_match = players_by_match.get(match_id, [])
             if can_match_be_1_vs_1(players_of_match, player_columns):
@@ -77,7 +76,7 @@ def send_matches_ids_to_client(output_queue, players_by_match, keys):
     matches_ids = filter_players_by_weaker_winner(players_by_match)
     logger.info(f"All matches with keys {keys} with weaker winner found")
 
-    output_queue.send_matches_ids(matches_ids)
+    output_queue.send_list_as_rows(matches_ids)
 
 def main():
     main_reducer(

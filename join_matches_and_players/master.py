@@ -4,10 +4,8 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, \
     JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, \
     MATCHES_KEY, \
-    PLAYERS_KEY,\
-    STRING_COLUMN_SEPARATOR, \
-    STRING_LINE_SEPARATOR
-from communications.rabbitmq_interface import ExchangeInterface, QueueInterface
+    PLAYERS_KEY
+from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, split_columns_into_list, split_rows_into_list
 from master_reducers_arq.master import main_master
 from logger.logger import Logger
 
@@ -17,8 +15,7 @@ ROWS_CHUNK_SIZE = get_config_param(ROWS_CHUNK_SIZE_KEY, logger)
 def send_dict_by_key(output_exchange, dict_by_key, tag_to_send, check_chunk_size=True):
     for key, rows in list(dict_by_key.items()):
         if len(rows) > ROWS_CHUNK_SIZE or not check_chunk_size:
-            rows_string = STRING_LINE_SEPARATOR.join([tag_to_send] + rows)
-            output_exchange.send_string(rows_string, key)
+            output_exchange.send_list_as_rows([tag_to_send] + rows, key)
             dict_by_key.pop(key)
             del rows
 
@@ -31,7 +28,7 @@ def add_to_dict_by_key(output_exchange,
                        tag_to_send):
     for row_string in received_rows:
         key = partition_function.get_key(
-            row_string.split(STRING_COLUMN_SEPARATOR)[match_id_index]
+            split_columns_into_list(row_string)[match_id_index]
         )
         rows_list = dict_by_key.get(key, [])
         rows_list.append(row_string)
@@ -59,7 +56,7 @@ def get_on_sentinel_callback_function(output_exchange, players_by_key, matches_b
 
 def get_dispach_to_reducers_function(output_exchange, players_by_key, matches_by_key, partition_function):
     def dispach_to_reducers(queue, received_string, routing_key):
-        received_entries = [line for line in received_string.split(STRING_LINE_SEPARATOR)]
+        received_entries = [line for line in split_rows_into_list(received_string)]
         if routing_key == PLAYERS_KEY:
             add_to_dict_by_key(
                 output_exchange,

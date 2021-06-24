@@ -5,14 +5,11 @@ import threading
 from config.envvars import CHUCKSIZE_IN_LINES_KEY, ENTRY_MATCH_AVERAGE_RATING_INDEX_KEY, ENTRY_MATCH_DURATION_INDEX_KEY, ENTRY_MATCH_LADDER_INDEX_KEY, ENTRY_MATCH_MAP_INDEX_KEY, ENTRY_MATCH_MIRROR_INDEX_KEY, ENTRY_MATCH_SERVER_INDEX_KEY, ENTRY_MATCH_TOKEN_INDEX_KEY, ENTRY_PLAYER_CIV_INDEX_KEY, ENTRY_PLAYER_MATCH_INDEX_KEY, ENTRY_PLAYER_RATING_INDEX_KEY, ENTRY_PLAYER_WINNER_INDEX_KEY, get_config_param, get_config_params
 from communications.constants import MATCHES_FANOUT_EXCHANGE_NAME, \
     PLAYERS_FANOUT_EXCHANGE_NAME, \
-    STRING_LINE_SEPARATOR, \
-    STRING_COLUMN_SEPARATOR, \
-    MATCHES_IDS_SEPARATOR, \
     LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
     TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME, \
     WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import QueueInterface, ExchangeInterface, RabbitMQConnection
+from communications.rabbitmq_interface import QueueInterface, ExchangeInterface, RabbitMQConnection, split_columns_into_list
 from logger.logger import Logger
 
 MATCHES_CSV_FILE = '/matches.csv'
@@ -42,7 +39,7 @@ ENTRY_PLAYERS_INDEXES = get_config_params([
 def get_receive_matches_ids_function(matches_ids):
     # function currying in python
     def receive_matches_ids(queue, received_string, _):
-        for match_id in received_string.split(MATCHES_IDS_SEPARATOR):
+        for match_id in split_columns_into_list(received_string):
             matches_ids.append(match_id)
     return receive_matches_ids
 
@@ -67,38 +64,28 @@ def get_matches_ids(queue, message):
     )
 
 
-def send_chunk(exchange, chunk):
-    if len(chunk) > 0:
-        chunk_string = STRING_LINE_SEPARATOR.join(chunk)
-        exchange.send_string(chunk_string)
-
-
 def get_line_string_for_matches(line_list):
-    return STRING_COLUMN_SEPARATOR.join(
-        [
-            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_TOKEN_INDEX_KEY]],
-            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_AVERAGE_RATING_INDEX_KEY]],
-            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_SERVER_INDEX_KEY]],
-            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_DURATION_INDEX_KEY]],
-            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_LADDER_INDEX_KEY]],
-            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_MAP_INDEX_KEY]],
-            line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_MIRROR_INDEX_KEY]],
-        ]
-    )
+    return [
+        line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_TOKEN_INDEX_KEY]],
+        line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_AVERAGE_RATING_INDEX_KEY]],
+        line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_SERVER_INDEX_KEY]],
+        line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_DURATION_INDEX_KEY]],
+        line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_LADDER_INDEX_KEY]],
+        line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_MAP_INDEX_KEY]],
+        line_list[ENTRY_MATCHES_INDEXES[ENTRY_MATCH_MIRROR_INDEX_KEY]],
+    ]
 
 
 def get_line_string_for_players(line_list):
-    return STRING_COLUMN_SEPARATOR.join(
-        [
-            line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_MATCH_INDEX_KEY]],
-            line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_RATING_INDEX_KEY]],
-            line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_WINNER_INDEX_KEY]],
-            line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_CIV_INDEX_KEY]],
-        ]
-    )
+    return [
+        line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_MATCH_INDEX_KEY]],
+        line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_RATING_INDEX_KEY]],
+        line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_WINNER_INDEX_KEY]],
+        line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_CIV_INDEX_KEY]],
+    ]
 
 
-def send_file_in_chunks(exchange, file_path, get_line_string_function):
+def send_file_in_chunks(exchange, file_path, get_columns_function):
     chunk = []
     with open(file_path) as csvfile:
         reader = csv.reader(csvfile)
@@ -107,10 +94,10 @@ def send_file_in_chunks(exchange, file_path, get_line_string_function):
                 # file header
                 continue
             if (i % CHUCKSIZE_IN_LINES == 0 and i > 0):
-                send_chunk(exchange, chunk)
+                exchange.send_list_of_columns(chunk)
                 del chunk[:]  # delete from memory
-            chunk.append(get_line_string_function(line))
-        send_chunk(exchange, chunk)
+            chunk.append(get_columns_function(line))
+        exchange.send_list_of_columns(chunk)
         exchange.send_sentinel()
 
 

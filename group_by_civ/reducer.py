@@ -1,5 +1,5 @@
+from communications.rabbitmq_interface import split_columns_into_list, split_rows_into_list
 from config.envvars import BARRIER_QUEUE_NAME_KEY, INPUT_EXCHANGE_NAME_KEY, KEYS_QUEUE_NAME_KEY, OUTPUT_QUEUE_NAME_KEY, get_config_param
-from communications.constants import STRING_COLUMN_SEPARATOR, STRING_LINE_SEPARATOR
 from master_reducers_arq.reducer import main_reducer
 from logger.logger import Logger
 
@@ -8,9 +8,8 @@ logger = Logger()
 def get_count_function(results_by_civ, append_to_results_function):
     # python function currying
     def count(queue, received_string, _):
-        players_rows = received_string.split(STRING_LINE_SEPARATOR)
-        for player_string in players_rows:
-            player_columns = player_string.split(STRING_COLUMN_SEPARATOR)
+        for player_string in split_rows_into_list(received_string):
+            player_columns = split_columns_into_list(player_string)
             append_to_results_function(results_by_civ, player_columns)
     return count
 

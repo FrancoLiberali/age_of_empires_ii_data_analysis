@@ -1,8 +1,3 @@
-STRING_LINE_SEPARATOR = '\n'
-STRING_COLUMN_SEPARATOR = ', '  # TODO que esten en rabbitmq_interface
-
-MATCHES_IDS_SEPARATOR = ', ' # TODO unificar con el de arriba
-
 MATCHES_FANOUT_EXCHANGE_NAME = 'matches_fanout_exchange'
 LONG_MATCHES_TO_CLIENT_QUEUE_NAME = 'long_matches_to_client'
 
