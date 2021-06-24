@@ -53,8 +53,8 @@ def get_on_sentinel_callback_function(output_1v1_exchage, output_team_exchage):
         output_team_exchage.send_sentinel(MATCHES_KEY)
     return on_sentinel_callback
 
-def get_filter_by_ladder_and_map_function(output_1v1_exchage, output_team_exchage):
-    def filter_by_ladder_and_map(queue, received_string, _):
+def get_filter_by_ladder_map_and_mirror_function(output_1v1_exchage, output_team_exchage):
+    def filter_by_ladder_map_and_mirror(queue, received_string, _):
         matches_1v1_matched = []
         matches_team_matched = []
         for row in split_rows_into_list(received_string):
@@ -65,7 +65,7 @@ def get_filter_by_ladder_and_map_function(output_1v1_exchage, output_team_exchag
                 add_to_matches(matches_team_matched, columns)
         output_1v1_exchage.send_list_of_columns(matches_1v1_matched, MATCHES_KEY)
         output_team_exchage.send_list_of_columns(matches_team_matched, MATCHES_KEY)
-    return filter_by_ladder_and_map
+    return filter_by_ladder_map_and_mirror
 
 
 def main():
@@ -90,7 +90,7 @@ def main():
     logger.info(
         f'Starting to receive matches to filter by ladder, map and mirror')
     input_queue.consume(
-        get_filter_by_ladder_and_map_function(
+        get_filter_by_ladder_map_and_mirror_function(
             output_1v1_exchage,
             output_team_exchage
         ),

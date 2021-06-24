@@ -27,7 +27,7 @@ services:
     networks:
       - age_of_empires_net
     depends_on:
-      - filter_by_ladder_and_match
+      - filter_by_ladder_map_and_mirror
       - join_master_1v1
       - filter_by_rating
       - long_matches_server
@@ -90,14 +90,14 @@ services:
     networks:
       - age_of_empires_net
 
-  filter_by_ladder_and_match:
+  filter_by_ladder_map_and_mirror:
     image: rabbitmq-python-base:0.0.1
     volumes:
-      - ./filter_by_ladder_and_match:/filter_by_ladder_and_match
-      - ./communications:/filter_by_ladder_and_match/communications
-      - ./config:/filter_by_ladder_and_match/config
-      - ./logger:/filter_by_ladder_and_match/logger
-    entrypoint: python3 /filter_by_ladder_and_match/main.py
+      - ./filter_by_ladder_map_and_mirror:/filter_by_ladder_map_and_mirror
+      - ./communications:/filter_by_ladder_map_and_mirror/communications
+      - ./config:/filter_by_ladder_map_and_mirror/config
+      - ./logger:/filter_by_ladder_map_and_mirror/logger
+    entrypoint: python3 /filter_by_ladder_map_and_mirror/main.py
     environment:
       - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq

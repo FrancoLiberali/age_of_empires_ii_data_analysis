@@ -36,7 +36,7 @@ def is_duration_enough(duration_string):
         if duration_string[-3:] == "day" or duration_string[-4:] == "days":
             return True
         else:
-            # TODO log error
+            logger.error(f"Found a duration with unknown format: {duration_string}")
             return False
 
 def is_matched(columns):
