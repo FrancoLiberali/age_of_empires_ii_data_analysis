@@ -39,14 +39,14 @@ def main():
         connection, TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME)
 
     times_used_by_civ = {}
-    print('Starting to receive times used by civ to calculate top 5')
+    logger.info('Starting to receive times used by civ to calculate top 5')
     input_queue.consume(
         get_group_times_used_by_civ_function(
             times_used_by_civ
         )
     )
 
-    print('All times used received, calculating top 5')
+    logger.info('All times used received, calculating top 5')
     times_used_list = times_used_by_civ.items()
     sorted_list = sorted(
         times_used_list,

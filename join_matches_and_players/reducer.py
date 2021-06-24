@@ -63,14 +63,14 @@ def join_players_and_matches(input_queue, output_queue, keys):
     players_by_match = {}
     matches = {}
 
-    print(f'Starting to receive players and matches in matches with keys {keys} to join them.')
+    logger.info(f'Starting to receive players and matches in matches with keys {keys} to join them.')
     input_queue.consume(
         get_filter_players_in_matches_function(
             players_by_match, matches, output_queue
         )
     )
 
-    print(f'All players and matches in matches with keys {keys} joined.')
+    logger.info(f'All players and matches in matches with keys {keys} joined.')
     return players_by_match
 
 

@@ -61,7 +61,7 @@ def get_dispach_to_reducers_function(output_exchange, players_by_key, partition_
 
 def receive_and_dispach_players(entry_queue, output_exchange, partition_function):
     players_by_key = {}
-    print("Starting to receive players from client and dispach it to reducers by key")
+    logger.info("Starting to receive players from client and dispach it to reducers by key")
     entry_queue.consume(
         get_dispach_to_reducers_function(
             output_exchange, players_by_key, partition_function

@@ -37,14 +37,15 @@ def main():
         connection, WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME)
 
     wins_and_defeats_by_civ = {}
-    print('Starting to receive wins and defeats by civ to calculate winner rate')
+    logger.info(
+        'Starting to receive wins and defeats by civ to calculate winner rate')
     input_queue.consume(
         get_group_wins_and_defeats_by_civ_function(
             wins_and_defeats_by_civ
         ),
     )
 
-    print('All wins and defeats received, calculating winner rate')
+    logger.info('All wins and defeats received, calculating winner rate')
     winner_rates = {}
     for civ, wins_and_defeats in wins_and_defeats_by_civ.items():
         wins = wins_and_defeats[WINS_INDEX]

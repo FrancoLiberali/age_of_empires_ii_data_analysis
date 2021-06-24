@@ -117,7 +117,7 @@ class QueueInterface(RabbitMQInterface):
                 if on_sentinel_callback is not None:
                     stop = on_sentinel_callback()
                 if stop is QueueInterface.STOP_CONSUMING:
-                    print("Sentinel message received, stoping receiving")
+                    logger.info("Sentinel message received, stoping receiving")
                     channel.stop_consuming()
             else:
                 on_message_callback(self, chunk_string, method.routing_key)
@@ -130,6 +130,7 @@ class QueueInterface(RabbitMQInterface):
 
 def get_on_sentinel_send_sentinel_callback_function(output):
     def on_sentinel_callback():
-        print("Sending sentinel to next stage to notify that all data has been sended")
+        logger.info(
+            "Sending sentinel to next stage to notify that all data has been sended")
         output.send_sentinel()
     return on_sentinel_callback

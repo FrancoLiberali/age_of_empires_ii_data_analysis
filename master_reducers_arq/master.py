@@ -12,7 +12,7 @@ def get_receive_sentinel_function(sentinel_received_amount, sentinels_objetive):
     # python function currying
     def receive_sentinel():
         sentinel_received_amount[0] += 1
-        print(
+        logger.info(
             f"Sentinels from reducers received: {sentinel_received_amount[0]} / {sentinels_objetive}")
         if sentinel_received_amount[0] == sentinels_objetive:
             return QueueInterface.STOP_CONSUMING
@@ -33,11 +33,11 @@ def receive_a_sentinel_per_reducer(barrier_queue, reducers_amount):
 
 def send_keys_to_reducers(keys_queue, partition_function, reducers_amount):
     posibles_keys = partition_function.get_posibles_keys()
-    print(f"Starting to send keys to reducers: {posibles_keys}")
+    logger.info(f"Starting to send keys to reducers: {posibles_keys}")
     for key in posibles_keys:
         # as it is round robin, all reducers will get equitative keys amount
         keys_queue.send_string(key)
-    print("All keys sended, sending sentinels to notify reducers that no more keys are going to be sended")
+    logger.info("All keys sended, sending sentinels to notify reducers that no more keys are going to be sended")
     for _ in range(0, reducers_amount):
         keys_queue.send_sentinel()
 
@@ -64,7 +64,7 @@ def main_master(
 
     send_keys_to_reducers(keys_queue, partition_function,
                           reducers_amount)
-    print("Waiting for a sentinel per reducer that notifies they are subscribed to the corresponding keys")
+    logger.info("Waiting for a sentinel per reducer that notifies they are subscribed to the corresponding keys")
     receive_a_sentinel_per_reducer(barrier_queue, reducers_amount)
 
     output_exchage = ExchangeInterface.newDirect(
@@ -75,12 +75,12 @@ def main_master(
         partition_function
     )
 
-    print("Sending sentinel to reducers for alerting them than no more data will be sended.")
+    logger.info("Sending sentinel to reducers for alerting them than no more data will be sended.")
     output_exchage.send_sentinel(SENTINEL_KEY)
-    print("Waiting for a sentinel per reducer that notifies they finished.")
+    logger.info("Waiting for a sentinel per reducer that notifies they finished.")
     receive_a_sentinel_per_reducer(barrier_queue, reducers_amount)
 
-    print("Sending sentinel to next stage to notify all data sended")
+    logger.info("Sending sentinel to next stage to notify all data sended")
     reducers_output_queue.send_sentinel()
 
     connection.close()

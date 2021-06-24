@@ -69,7 +69,7 @@ def main():
     output_queue = QueueInterface(
         connection, LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
 
-    print('Starting to receive matches to filter')
+    logger.info('Starting to receive matches to filter')
     input_queue.consume(
         get_filter_by_duration_average_rating_and_server_function(output_queue),
         get_on_sentinel_send_sentinel_callback_function(output_queue)

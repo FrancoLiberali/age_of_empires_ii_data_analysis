@@ -10,7 +10,7 @@ services:
       - ./config:/client/config
       - ./logger:/client/logger
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - CHUCKSIZE_IN_LINES=100
       - ENTRY_MATCH_TOKEN_INDEX=0
@@ -42,7 +42,7 @@ services:
       - ./logger:/long_matches_server/logger
     entrypoint: python3 /long_matches_server/main.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - MINIMUM_AVERAGE_RATING=2000
       - MINIMUM_DURATION=2
@@ -64,7 +64,7 @@ services:
       - ./logger:/group_by_match/logger
     entrypoint: python3 /group_by_match/group_by_match_master.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_MATCH}
       - PLAYERS_CHUNK_SIZE=100
@@ -83,7 +83,7 @@ services:
       - ./logger:/group_by_match_reducer/logger
     entrypoint: python3 /group_by_match_reducer/group_by_match_reducer.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - MINIMUM_RATING=1000
       - MINIMUM_RATING_PORCENTAGE_DIFF=30
@@ -99,7 +99,7 @@ services:
       - ./logger:/filter_by_ladder_and_match/logger
     entrypoint: python3 /filter_by_ladder_and_match/main.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - LADDER_1V1=RM_1v1
       - MAP_ARENA=arena
@@ -122,7 +122,7 @@ services:
       - ./logger:/join_matches_and_players/logger
     entrypoint: python3 /join_matches_and_players/master.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_JOIN_1V1}
       - ROWS_CHUNK_SIZE=100
@@ -147,7 +147,7 @@ services:
       - ./logger:/join_matches_and_players/logger
     entrypoint: python3 /join_matches_and_players/reducer.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - INPUT_EXCHANGE_NAME=1v1_join_master_to_reducers_exchange
       - BARRIER_QUEUE_NAME=1v1_join_reducers_barrier
@@ -165,7 +165,7 @@ services:
       - ./logger:/filter_by_rating/logger
     entrypoint: python3 /filter_by_rating/main.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - OUTPUT_EXCHANGE_NAME=filter_by_rating_to_team_join_master_exchange
       - MIN_RATING=2000
@@ -185,7 +185,7 @@ services:
       - ./logger:/join_matches_and_players/logger
     entrypoint: python3 /join_matches_and_players/master.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_JOIN_TEAM}
       - ROWS_CHUNK_SIZE=100
@@ -210,7 +210,7 @@ services:
       - ./logger:/join_matches_and_players/logger
     entrypoint: python3 /join_matches_and_players/reducer.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - INPUT_EXCHANGE_NAME=team_join_master_to_reducers_exchange
       - BARRIER_QUEUE_NAME=team_join_reducers_barrier
@@ -230,7 +230,7 @@ services:
       - ./logger:/group_by_civ/logger
     entrypoint: python3 /group_by_civ/master.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_CIV_1V1}
       - PLAYERS_CHUNK_SIZE=100
@@ -254,7 +254,7 @@ services:
       - ./logger:/group_by_civ/logger
     entrypoint: python3 /group_by_civ/count_wins_and_defeats_reducer.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - INPUT_EXCHANGE_NAME=1v1_group_by_civ_master_to_reducers_exchange
       - BARRIER_QUEUE_NAME=1v1_group_by_civ_reducers_barrier
@@ -274,7 +274,7 @@ services:
       - ./logger:/group_by_civ/logger
     entrypoint: python3 /group_by_civ/master.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_CIV_TEAM}
       - PLAYERS_CHUNK_SIZE=100
@@ -298,7 +298,7 @@ services:
       - ./logger:/group_by_civ/logger
     entrypoint: python3 /group_by_civ/count_times_used_reducer.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - INPUT_EXCHANGE_NAME=team_group_by_civ_master_to_reducers_exchange
       - BARRIER_QUEUE_NAME=team_group_by_civ_reducers_barrier
@@ -316,7 +316,7 @@ services:
       - ./logger:/winner_rate_calculator/logger
     entrypoint: python3 /winner_rate_calculator/winner_rate_calculator.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - INPUT_QUEUE_NAME=1v1_group_by_civ_reducers_to_winner_rate_calculador_queue
     networks:
@@ -331,7 +331,7 @@ services:
       - ./logger:/top_5_times_used_calculator/logger
     entrypoint: python3 /top_5_times_used_calculator/top_5_times_used_calculator.py
     environment:
-      - PYTHONUNBUFFERED=1
+      - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - INPUT_QUEUE_NAME=team_group_by_civ_reducers_to_top_5_calculador_queue
     networks:

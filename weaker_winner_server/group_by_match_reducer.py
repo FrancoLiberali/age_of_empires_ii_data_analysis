@@ -41,12 +41,12 @@ def get_group_by_match_function(players_by_match):
 
 def process_player_by_match(input_queue, output_queue, keys):
     players_by_match = {}
-    print(f'Starting to receive players in matches with keys {keys} to group them.')
+    logger.info(f'Starting to receive players in matches with keys {keys} to group them.')
     input_queue.consume(
         get_group_by_match_function(players_by_match)
     )
 
-    print(f'All players in matches with keys {keys} grouped.')
+    logger.info(f'All players in matches with keys {keys} grouped.')
     return players_by_match
 
 
@@ -75,7 +75,7 @@ def filter_players_by_weaker_winner(players_by_match):
 
 def send_matches_ids_to_client(output_queue, players_by_match, keys):
     matches_ids = filter_players_by_weaker_winner(players_by_match)
-    print(f"All matches with keys {keys} with weaker winner found")
+    logger.info(f"All matches with keys {keys} with weaker winner found")
 
     output_queue.send_matches_ids(matches_ids)
 

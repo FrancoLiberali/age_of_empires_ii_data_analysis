@@ -19,7 +19,8 @@ def get_group_players_by_civ_function(append_to_results_function):
     # python function currying
     def group_players_by_civ(input_queue, output_queue, keys):
         values_by_civ = {}
-        print(f'Starting to receive players in matches with keys {keys} to group by civ.')
+        logger.info(
+            f'Starting to receive players in matches with keys {keys} to group by civ.')
         input_queue.consume(
             get_count_function(
                 values_by_civ,
@@ -27,7 +28,7 @@ def get_group_players_by_civ_function(append_to_results_function):
             ),
         )
 
-        print(f'All players in matches with keys {keys} grouped.')
+        logger.info(f'All players in matches with keys {keys} grouped.')
         return values_by_civ
     return group_players_by_civ
 
@@ -35,7 +36,7 @@ def get_group_players_by_civ_function(append_to_results_function):
 def get_send_results_by_civ_function(append_to_data_to_send_function):
     # python function currying
     def send_results_by_civ(output_queue, results_by_civ, keys):
-        print(
+        logger.info(
             f"Results per civ from all matches with keys {keys} counted: {results_by_civ}. Sending it to next stage")
         data_to_send = []
         for civ, result in results_by_civ.items():

@@ -44,9 +44,10 @@ INPUTS_AMOUNT = 2
 def get_on_sentinel_callback_function(output_exchange, players_by_key, matches_by_key, sentinels_count):
     def on_sentinel_callback():
         sentinels_count[0] += 1
-        print(f"Sentinel message: {sentinels_count[0]}/{INPUTS_AMOUNT} received")
+        logger.info(
+            f"Sentinel message: {sentinels_count[0]}/{INPUTS_AMOUNT} received")
         if sentinels_count[0] == INPUTS_AMOUNT:
-            print("Stoping receive and dispach it to reducers.")
+            logger.info("Stoping receive and dispach it to reducers.")
             # send the remaining players and matches
             send_dict_by_key(output_exchange, players_by_key,
                              JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, False)
@@ -84,7 +85,7 @@ def receive_and_dispach_players_and_matches(entry_queue, output_exchange, partit
     players_by_key = {}
     matches_by_key = {}
     sentinels_count = [0]
-    print("Starting to receive players and matches and dispach it to reducers by key")
+    logger.info("Starting to receive players and matches and dispach it to reducers by key")
     entry_queue.consume(
         get_dispach_to_reducers_function(
             output_exchange,

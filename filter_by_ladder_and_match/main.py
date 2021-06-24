@@ -49,7 +49,7 @@ def add_to_matches(matches_list, match_columns):
 
 def get_on_sentinel_callback_function(output_1v1_exchage, output_team_exchage):
     def on_sentinel_callback():
-        print(
+        logger.info(
             "Sending sentinel to next stage to notify that all matches ids has been sended")
         output_1v1_exchage.send_sentinel(MATCHES_KEY)
         output_team_exchage.send_sentinel(MATCHES_KEY)
@@ -89,7 +89,8 @@ def main():
     output_team_exchage = ExchangeInterface.newDirect(
         connection, output_exchanges[OUTPUT_EXCHANGE_NAME_TEAM_KEY])
 
-    print(f'Starting to receive matches to filter by ladder, map and mirror')
+    logger.info(
+        f'Starting to receive matches to filter by ladder, map and mirror')
     input_queue.consume(
         get_filter_by_ladder_and_map_function(
             output_1v1_exchage,
