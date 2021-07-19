@@ -1,4 +1,4 @@
-# Age of empires II DE (HA))
+# Age of empires II DE (HA)
 # TP Final: Middleware y Coordinación de Procesos, Sistemas Distribuidos I (75.74), FIUBA
 
 Sistema distribuidos que procesa el detalle de partidas jugadas en el videojuego Age of Empires DE en base a la información provista en archivos CSV.
