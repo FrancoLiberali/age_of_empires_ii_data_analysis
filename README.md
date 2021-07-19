@@ -1,4 +1,5 @@
-# Age of empires II DE Data Analysis, TP2: Middleware y Coordinación de Procesos, Sistemas Distribuidos I (75.74), FIUBA
+# Age of empires II DE (HA))
+# TP Final: Middleware y Coordinación de Procesos, Sistemas Distribuidos I (75.74), FIUBA
 
 Sistema distribuidos que procesa el detalle de partidas jugadas en el videojuego Age of Empires DE en base a la información provista en archivos CSV.
 
@@ -55,18 +56,33 @@ Son configurables desde `docker-compose-client-and-servers.yaml`
 * Para el cliente, es posible configurar el indice en la que se encuentran cada una de las columnas en los archivos de entrada por si estos llegacen a cambiar entre datasets. Los mismos son los parametros: `ENTRY_MATCH_TOKEN_INDEX` , `ENTRY_MATCH_AVERAGE_RATING_INDEX`, `ENTRY_MATCH_SERVER_INDEX`, `ENTRY_MATCH_DURATION_INDEX`, `ENTRY_MATCH_LADDER_INDEX`, `ENTRY_MATCH_MAP_INDEX`, `ENTRY_MATCH_MIRROR_INDEX`, `ENTRY_PLAYER_MATCH_INDEX`, `ENTRY_PLAYER_RATING_INDEX`, `ENTRY_PLAYER_WINNER_INDEX`, `ENTRY_PLAYER_CIV_INDEX`
 * Para los filtros, es posible configurar los valores por lo que se filtra, por si estos llegacen a cambiar de formato entre datasets o si se desea dar un comportamiento distinto a los mismos. Los mismos son: `MINIMUM_AVERAGE_RATING`, `MINIMUM_DURATION`, `DURATION_FORMAT`, `KOREA_CENTRAL_SERVER`, `SOUTH_EAST_ASIA_SERVER`, `EAST_US_SERVER`, `MIN_RATING`, `LADDER_1V1`, `MAP_ARENA`, `NO_MIRROR`, `LADDER_TEAM`, `MAP_ISLANDS`, `MINIMUM_RATING`, `MINIMUM_RATING_PORCENTAGE_DIFF`
 
-## Requerimientos funcionales
-El procesamiento de los datos debe brindar la siguiente información:
-* IDs de matches que excedieron las dos horas de juego por pro players (average_rating > 2000) en los servers koreacentral, southeastasia y eastus
-* IDs de matches en partidas 1v1 donde el ganador tiene un rating 30% menor al perdedor y el rating del ganador es superior a 1000
-* Porcentaje de victorias por civilización en partidas 1v1 (ladder == RM_1v1) con civilizaciones diferentes en mapa arena
-* Top 5 civilizaciones más usadas por pro players (rating > 2000) en team games (ladder == RM_TEAM) en mapa islands
+## Requerimientos Funcionales
+Se solicita un sistema distribuido que procese el detalle de partidas jugadas en el
+videojuego Age of Empires DE
+- La información será provista en archivos CSV
+- El procesamiento de los datos debe brindar la siguiente información:
+    1. IDs de matches que excedieron las dos horas de juego por pro players
+(average_rating > 2000) en los servers koreacentral, southeastasia y eastus
+    2. IDs de matches en partidas 1v1 donde el ganador tiene un rating 30% menor al
+perdedor y el rating del ganador es superior a 1000
+    3. Porcentaje de victorias por civilización en partidas 1v1 (ladder == RM_1v1) con
+civilizaciones diferentes en mapa arena
+    4. Top 5 civilizaciones más usadas por pro players (rating > 2000) en team games
+(ladder == RM_TEAM) en mapa islands
+- Como origen de datos se definen los archivos de ingreso registrados en https://www.kaggle.com/ezetowers/aoe2-tp2-draft
 
-## Requerimientos no funcionales
-
-* El sistema debe estar optimizado para entornos multicomputadoras
-* El sistema debe ser invocado desde un nodo que transmite los datos a ser procesados.
-* Se debe soportar el escalamiento de los elementos de cómputo
-* De ser necesaria una comunicación basada en grupos, se requiere la definición de un middleware
-* El diseño debe permitir una fácil adaptación a otros datasets de partidas de Age of Empires II DE
-* Debido a restricciones en el tiempo de implementación, se permite la construcción de un sistema acoplado al modelo de negocio. No es un requerimiento la creación de una plataforma de procesamiento de datos
+## Requerimientos No Funcionales
+- El sistema debe estar optimizado para entornos multicomputadoras
+- El sistema debe ser invocado desde un nodo que transmite los datos a ser
+procesados.
+- Se debe soportar el escalamiento de los elementos de cómputo
+- De ser necesaria una comunicación basada en grupos, se requiere la definición
+de un middleware
+- El diseño debe permitir una fácil adaptación a otros datasets de partidas de
+Age of Empires II DE
+- Debido a restricciones en el tiempo de implementación, se permite la
+construcción de un sistema acoplado al modelo de negocio. No es un
+requerimiento la creación de una plataforma de procesamiento de datos
+- El sistema debe mostrar alta disponibilidad hacia los clientes
+- El sistema debe ser tolerante a fallos como la caída de procesos
+- El sistema debe permitir procesar datasets secuencialmente
