@@ -1,3 +1,4 @@
+from hashlib import md5
 import pika
 
 from logger.logger import Logger
@@ -73,8 +74,9 @@ class QueueInterface(RabbitMQInterface):
     STOP_CONSUMING = None
     NO_STOP_CONSUMING = 1
 
-    def __init__(self, rabbit_MQ_connection, name, declare=True):
+    def __init__(self, rabbit_MQ_connection, name, last_hash=None, declare=True):
         RabbitMQInterface.__init__(self, rabbit_MQ_connection, name)
+        self.last_hash = last_hash
         if declare:
             self.channel.queue_declare(queue=self.name)
 
@@ -82,7 +84,7 @@ class QueueInterface(RabbitMQInterface):
     def newPrivate(cls, rabbit_MQ_connection):
         result = rabbit_MQ_connection.channel.queue_declare(queue='')
         private_queue_name = result.method.queue
-        return cls(rabbit_MQ_connection, private_queue_name, False)
+        return cls(rabbit_MQ_connection, private_queue_name, declare=False)
 
     def bind(self, exchange, routing_key=None):
         self.channel.queue_bind(
@@ -111,16 +113,22 @@ class QueueInterface(RabbitMQInterface):
 
     def _get_on_message_callback_function(self, on_message_callback, on_sentinel_callback):
         def internal_on_message_callback(channel, method, properties, body):
-            chunk_string = body.decode(STRING_ENCODING)
-            if chunk_string == SENTINEL_MESSAGE:
-                stop = QueueInterface.STOP_CONSUMING
-                if on_sentinel_callback is not None:
-                    stop = on_sentinel_callback()
-                if stop is QueueInterface.STOP_CONSUMING:
-                    logger.info("Sentinel message received, stoping receiving")
-                    channel.stop_consuming()
+            actual_hash = md5(body).hexdigest()
+            if actual_hash != self.last_hash:
+                chunk_string = body.decode(STRING_ENCODING)
+                if chunk_string == SENTINEL_MESSAGE:
+                    stop = QueueInterface.STOP_CONSUMING
+                    if on_sentinel_callback is not None:
+                        stop = on_sentinel_callback()
+                    if stop is QueueInterface.STOP_CONSUMING:
+                        logger.info("Sentinel message received, stoping receiving")
+                        channel.stop_consuming()
+                else:
+                    on_message_callback(self, chunk_string, method.routing_key)
+                self.last_hash = actual_hash
             else:
-                on_message_callback(self, chunk_string, method.routing_key)
+                logger.error("ME MEDIO HASH IGUAL")
+                logger.error(actual_hash)
             channel.basic_ack(delivery_tag=method.delivery_tag)
         return internal_on_message_callback
 
