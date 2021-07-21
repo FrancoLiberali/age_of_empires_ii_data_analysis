@@ -1,4 +1,5 @@
 from hashlib import md5
+import os
 import pika
 
 from logger.logger import Logger
@@ -11,6 +12,7 @@ SENTINEL_MESSAGE = "SENTINEL"
 SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR = " - "
 STRING_LINE_SEPARATOR = '\n'
 STRING_COLUMN_SEPARATOR = ', '
+LAST_HASH_DIR_PATH = "/last_hash/"
 
 class RabbitMQConnection:
     def __init__(self):
@@ -75,17 +77,27 @@ class QueueInterface(RabbitMQInterface):
     STOP_CONSUMING = None
     NO_STOP_CONSUMING = 1
 
-    def __init__(self, rabbit_MQ_connection, name, last_hash=None, declare=True):
+    def __init__(self, rabbit_MQ_connection, name, private=False):
         RabbitMQInterface.__init__(self, rabbit_MQ_connection, name)
-        self.last_hash = last_hash
-        if declare:
+        self.private = private
+        if not private:
+            os.makedirs(os.path.dirname(LAST_HASH_DIR_PATH), exist_ok=True)
+            last_hash_file_path = LAST_HASH_DIR_PATH + name + ".txt"
+            try:
+                self.last_hash_file = open(last_hash_file_path, "r+")
+                self.last_hash = self.last_hash_file.readline()
+                logger.debug(f"{self.name} - Initial last hash: {self.last_hash}")
+            except FileNotFoundError:
+                logger.debug(f"{self.name} - Last hash file not found, creating. No initial last hash")
+                self.last_hash_file = open(last_hash_file_path, "w+")
+                self.last_hash = ''
             self.channel.queue_declare(queue=self.name)
 
     @classmethod
     def newPrivate(cls, rabbit_MQ_connection):
         result = rabbit_MQ_connection.channel.queue_declare(queue='')
         private_queue_name = result.method.queue
-        return cls(rabbit_MQ_connection, private_queue_name, declare=False)
+        return cls(rabbit_MQ_connection, private_queue_name, private=True)
 
     def bind(self, exchange, routing_key=None):
         self.channel.queue_bind(
@@ -116,7 +128,7 @@ class QueueInterface(RabbitMQInterface):
         def internal_on_message_callback(channel, method, properties, body):
             actual_hash = md5(body).hexdigest()
             chunk_string = body.decode(STRING_ENCODING)
-            if actual_hash != self.last_hash:
+            if self._is_different_to_last_hash(actual_hash):
                 splited_chunk_string = chunk_string.split(
                     SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR)
                 if chunk_string == SENTINEL_MESSAGE or splited_chunk_string[-1] == SENTINEL_MESSAGE:
@@ -128,11 +140,24 @@ class QueueInterface(RabbitMQInterface):
                         channel.stop_consuming()
                 else:
                     on_message_callback(self, chunk_string, method.routing_key)
-                self.last_hash = actual_hash
+                self._store_actual_hash(actual_hash)
             else:
-                logger.debug(f"Duplicated message: {actual_hash} {chunk_string}")
+                logger.debug(
+                    f"{self.name} - Duplicated message: {actual_hash} {chunk_string}")
             channel.basic_ack(delivery_tag=method.delivery_tag)
         return internal_on_message_callback
+
+    def _is_different_to_last_hash(self, actual_hash):
+        if not self.private:
+            return actual_hash != self.last_hash
+        else:
+            return True
+
+    def _store_actual_hash(self, actual_hash):
+        if not self.private:
+            self.last_hash = actual_hash
+            self.last_hash_file.seek(0)
+            self.last_hash_file.write(self.last_hash)
 
     def stop_consuming(self):
         self.channel.stop_consuming()

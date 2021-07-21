@@ -69,7 +69,8 @@ def main():
     logger.info('Starting to receive matches to filter')
     input_queue.consume(
         get_filter_by_duration_average_rating_and_server_function(output_queue),
-        get_on_sentinel_send_sentinel_callback_function(output_queue)
+        on_sentinel_callback=get_on_sentinel_send_sentinel_callback_function(
+            output_queue)
     )
     connection.close()
 

@@ -1,4 +1,4 @@
-from config.envvars import BARRIER_QUEUE_NAME_KEY, MATCHES_INPUT_EXCHANGE_NAME_KEY, OUTPUT_EXCHANGE_NAME_KEY, PLAYERS_INPUT_EXCHANGE_NAME_KEY, REDUCERS_OUTPUT_QUEUE_NAME_KEY, ROWS_CHUNK_SIZE_KEY, get_config_param
+from config.envvars import BARRIER_QUEUE_NAME_KEY, INPUT_QUEUE_NAME_KEY, MATCHES_INPUT_EXCHANGE_NAME_KEY, OUTPUT_EXCHANGE_NAME_KEY, PLAYERS_INPUT_EXCHANGE_NAME_KEY, REDUCERS_OUTPUT_QUEUE_NAME_KEY, ROWS_CHUNK_SIZE_KEY, get_config_param
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
     JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, \
@@ -109,7 +109,10 @@ def subscribe_to_entries(connection):
         get_config_param(PLAYERS_INPUT_EXCHANGE_NAME_KEY, logger)
     )
 
-    input_queue = QueueInterface.newPrivate(connection)
+    input_queue = QueueInterface(
+        connection,
+        get_config_param(INPUT_QUEUE_NAME_KEY, logger)
+    )
     input_queue.bind(matches_input_exchage, MATCHES_KEY)
     input_queue.bind(players_input_exchage, PLAYERS_KEY)
 
