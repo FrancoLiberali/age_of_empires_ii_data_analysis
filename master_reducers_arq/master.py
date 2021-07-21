@@ -1,4 +1,4 @@
-from config.envvars import REDUCERS_AMOUNT_KEY, get_config_param
+from config.envvars import REDUCERS_AMOUNT_KEY, REDUCERS_QUEUE_PREFIX_KEY, get_config_param
 from communications.constants import SENTINEL_KEY
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection
 from logger.logger import Logger
@@ -30,19 +30,27 @@ def receive_a_sentinel_per_reducer(barrier_queue, reducers_amount):
     )
 
 
-def send_keys_to_reducers(keys_queue, partition_function, reducers_amount):
+def subscribe_reducers_queues_to_keys(connection, reducers_input_exchange, partition_function, reducers_amount):
     posibles_keys = partition_function.get_posibles_keys()
-    logger.info(f"Starting to send keys to reducers: {posibles_keys}")
-    for key in posibles_keys:
-        # as it is round robin, all reducers will get equitative keys amount
-        keys_queue.send_string(key)
-    logger.info("All keys sended, sending sentinels to notify reducers that no more keys are going to be sended")
-    for _ in range(0, reducers_amount):
-        keys_queue.send_sentinel()
+    logger.info(f"Starting to subscribe reducer's queues to keys: {posibles_keys}")
+
+    reducers_queue_prefix = get_config_param(REDUCERS_QUEUE_PREFIX_KEY, logger)
+    reducers_queues = []
+    for i in range(1, reducers_amount + 1):
+        reducers_queues.append(
+            QueueInterface(connection, f"{reducers_queue_prefix}{i}")
+        )
+
+    for index, key in enumerate(posibles_keys):
+        queue_to_subscribe = reducers_queues[index % reducers_amount]
+        queue_to_subscribe.bind(reducers_input_exchange, key)
+
+    for queue in reducers_queues:
+        queue.bind(reducers_input_exchange, SENTINEL_KEY)
+    logger.info("All reducers queues subscribed to keys")
 
 
 def main_master(
-        keys_queue_name,
         barrier_queue_name,
         reducers_output_queue_name,
         output_exchange_name,
@@ -53,7 +61,6 @@ def main_master(
 
     entry_queue = subscribe_to_entries_function(connection)
 
-    keys_queue = QueueInterface(connection, keys_queue_name)
     barrier_queue = QueueInterface(connection, barrier_queue_name)
     reducers_output_queue = QueueInterface(
         connection, reducers_output_queue_name)
@@ -61,13 +68,15 @@ def main_master(
     reducers_amount = get_config_param(REDUCERS_AMOUNT_KEY, logger)
     partition_function = PartitionFunction(reducers_amount)
 
-    send_keys_to_reducers(keys_queue, partition_function,
-                          reducers_amount)
-    logger.info("Waiting for a sentinel per reducer that notifies they are subscribed to the corresponding keys")
-    receive_a_sentinel_per_reducer(barrier_queue, reducers_amount)
-
     output_exchage = ExchangeInterface.newDirect(
         connection, output_exchange_name)
+    subscribe_reducers_queues_to_keys(
+        connection,
+        output_exchage,
+        partition_function,
+        reducers_amount
+    )
+
     receive_and_dispach_function(
         entry_queue,
         output_exchage,

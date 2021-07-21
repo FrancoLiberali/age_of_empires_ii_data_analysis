@@ -1,5 +1,5 @@
 from communications.rabbitmq_interface import split_columns_into_list, split_rows_into_list
-from config.envvars import BARRIER_QUEUE_NAME_KEY, INPUT_EXCHANGE_NAME_KEY, KEYS_QUEUE_NAME_KEY, OUTPUT_QUEUE_NAME_KEY, get_config_param
+from config.envvars import BARRIER_QUEUE_NAME_KEY, OUTPUT_QUEUE_NAME_KEY, get_config_param
 from master_reducers_arq.reducer import main_reducer
 from logger.logger import Logger
 
@@ -16,10 +16,10 @@ def get_count_function(results_by_civ, append_to_results_function):
 
 def get_group_players_by_civ_function(append_to_results_function):
     # python function currying
-    def group_players_by_civ(input_queue, output_queue, keys):
+    def group_players_by_civ(input_queue, output_queue):
         values_by_civ = {}
         logger.info(
-            f'Starting to receive players in matches with keys {keys} to group by civ.')
+            f'Starting to receive players in matches to group by civ.')
         input_queue.consume(
             get_count_function(
                 values_by_civ,
@@ -27,16 +27,16 @@ def get_group_players_by_civ_function(append_to_results_function):
             ),
         )
 
-        logger.info(f'All players in matches with keys {keys} grouped.')
+        logger.info(f'All players in matches received grouped.')
         return values_by_civ
     return group_players_by_civ
 
 
 def get_send_results_by_civ_function(append_to_data_to_send_function):
     # python function currying
-    def send_results_by_civ(output_queue, results_by_civ, keys):
+    def send_results_by_civ(output_queue, results_by_civ):
         logger.info(
-            f"Results per civ from all matches with keys {keys} counted: {results_by_civ}. Sending it to next stage")
+            f"Results per civ from all matches counted: {results_by_civ}. Sending it to next stage")
         data_to_send = []
         for civ, result in results_by_civ.items():
             append_to_data_to_send_function(data_to_send, civ, result)
@@ -46,9 +46,7 @@ def get_send_results_by_civ_function(append_to_data_to_send_function):
 
 def main_group_by_civ_reducer(append_to_results_function, append_to_data_to_send_function):
     main_reducer(
-        get_config_param(KEYS_QUEUE_NAME_KEY, logger),
         get_config_param(BARRIER_QUEUE_NAME_KEY, logger),
-        get_config_param(INPUT_EXCHANGE_NAME_KEY, logger),
         get_config_param(OUTPUT_QUEUE_NAME_KEY, logger),
         get_group_players_by_civ_function(append_to_results_function),
         get_send_results_by_civ_function(append_to_data_to_send_function)

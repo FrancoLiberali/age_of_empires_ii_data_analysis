@@ -4,7 +4,6 @@ LONG_MATCHES_TO_CLIENT_QUEUE_NAME = 'long_matches_to_client'
 PLAYERS_FANOUT_EXCHANGE_NAME = 'players_fanout_exchange'
 GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME = 'group_by_match_master_to_reducers_exchange'
 GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME = 'group_by_match_reducers_barrier'
-GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME = 'group_by_match_master_to_reducers_queue'
 WEAKER_WINNER_TO_CLIENT_QUEUE_NAME = 'weaker_winner_to_client'
 
 WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME = 'winner_rate_calculator_to_client_queue'
