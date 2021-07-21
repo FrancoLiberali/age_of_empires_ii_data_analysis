@@ -106,25 +106,7 @@ services:
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_MATCH}
       - PLAYERS_CHUNK_SIZE=100
-    networks:
-      - age_of_empires_net
-    depends_on:
-      - group_by_match_reducer
-
-  group_by_match_reducer:
-    image: rabbitmq-python-base:0.0.1
-    volumes:
-      - ./group_by_match:/age_of_empires_ii_da
-      - ./communications:/age_of_empires_ii_da/communications
-      - ./master_reducers_arq:/age_of_empires_ii_da/master_reducers_arq
-      - ./config:/age_of_empires_ii_da/config
-      - ./logger:/age_of_empires_ii_da/logger
-    entrypoint: python3 /age_of_empires_ii_da/reducer.py
-    environment:
-      - TZ=America/Argentina/Buenos_Aires
-      - RABBITMQ_HOST=rabbitmq
-      - MINIMUM_RATING=1000
-      - MINIMUM_RATING_PORCENTAGE_DIFF=30
+      - REDUCERS_QUEUE_PREFIX=group_by_match_reducer_
     networks:
       - age_of_empires_net
 
@@ -145,30 +127,9 @@ services:
       - PLAYERS_INPUT_EXCHANGE_NAME=players_fanout_exchange
       - MATCHES_INPUT_EXCHANGE_NAME=1v1_to_join_master_exchange
       - OUTPUT_EXCHANGE_NAME=1v1_join_master_to_reducers_exchange
-      - KEYS_QUEUE_NAME=1v1_join_master_to_reducers_queue
       - BARRIER_QUEUE_NAME=1v1_join_reducers_barrier
       - REDUCERS_OUTPUT_QUEUE_NAME=1v1_join_reducers_to_group_by_civ_master_queue
-    networks:
-      - age_of_empires_net
-    depends_on:
-      - join_reducer_1v1
-
-  join_reducer_1v1:
-    image: rabbitmq-python-base:0.0.1
-    volumes:
-      - ./join_matches_and_players:/join_matches_and_players
-      - ./communications:/join_matches_and_players/communications
-      - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
-      - ./config:/join_matches_and_players/config
-      - ./logger:/join_matches_and_players/logger
-    entrypoint: python3 /join_matches_and_players/reducer.py
-    environment:
-      - TZ=America/Argentina/Buenos_Aires
-      - RABBITMQ_HOST=rabbitmq
-      - INPUT_EXCHANGE_NAME=1v1_join_master_to_reducers_exchange
-      - BARRIER_QUEUE_NAME=1v1_join_reducers_barrier
-      - KEYS_QUEUE_NAME=1v1_join_master_to_reducers_queue
-      - OUTPUT_QUEUE_NAME=1v1_join_reducers_to_group_by_civ_master_queue
+      - REDUCERS_QUEUE_PREFIX=join_reducer_1v1_
     networks:
       - age_of_empires_net
 
@@ -189,30 +150,9 @@ services:
       - PLAYERS_INPUT_EXCHANGE_NAME=filter_by_rating_to_team_join_master_exchange
       - MATCHES_INPUT_EXCHANGE_NAME=team_to_join_master_exchange
       - OUTPUT_EXCHANGE_NAME=team_join_master_to_reducers_exchange
-      - KEYS_QUEUE_NAME=team_join_master_to_reducers_queue
       - BARRIER_QUEUE_NAME=team_join_reducers_barrier
       - REDUCERS_OUTPUT_QUEUE_NAME=team_join_reducers_to_group_by_civ_master_queue
-    networks:
-      - age_of_empires_net
-    depends_on:
-      - join_reducer_team
-
-  join_reducer_team:
-    image: rabbitmq-python-base:0.0.1
-    volumes:
-      - ./join_matches_and_players:/join_matches_and_players
-      - ./communications:/join_matches_and_players/communications
-      - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
-      - ./config:/join_matches_and_players/config
-      - ./logger:/join_matches_and_players/logger
-    entrypoint: python3 /join_matches_and_players/reducer.py
-    environment:
-      - TZ=America/Argentina/Buenos_Aires
-      - RABBITMQ_HOST=rabbitmq
-      - INPUT_EXCHANGE_NAME=team_join_master_to_reducers_exchange
-      - BARRIER_QUEUE_NAME=team_join_reducers_barrier
-      - KEYS_QUEUE_NAME=team_join_master_to_reducers_queue
-      - OUTPUT_QUEUE_NAME=team_join_reducers_to_group_by_civ_master_queue
+      - REDUCERS_QUEUE_PREFIX=join_reducer_team_
     networks:
       - age_of_empires_net
 
@@ -232,30 +172,9 @@ services:
       - PLAYERS_CHUNK_SIZE=100
       - PLAYERS_INPUT_QUEUE_NAME=1v1_join_reducers_to_group_by_civ_master_queue
       - OUTPUT_EXCHANGE_NAME=1v1_group_by_civ_master_to_reducers_exchange
-      - KEYS_QUEUE_NAME=1v1_group_by_civ_master_to_reducers_queue
       - BARRIER_QUEUE_NAME=1v1_group_by_civ_reducers_barrier
       - REDUCERS_OUTPUT_QUEUE_NAME=1v1_group_by_civ_reducers_to_winner_rate_calculador_queue
-    networks:
-      - age_of_empires_net
-    depends_on:
-      - group_by_civ_reducer_1v1
-
-  group_by_civ_reducer_1v1:
-    image: rabbitmq-python-base:0.0.1
-    volumes:
-      - ./group_by_civ:/group_by_civ
-      - ./communications:/group_by_civ/communications
-      - ./master_reducers_arq:/group_by_civ/master_reducers_arq
-      - ./config:/group_by_civ/config
-      - ./logger:/group_by_civ/logger
-    entrypoint: python3 /group_by_civ/count_wins_and_defeats_reducer.py
-    environment:
-      - TZ=America/Argentina/Buenos_Aires
-      - RABBITMQ_HOST=rabbitmq
-      - INPUT_EXCHANGE_NAME=1v1_group_by_civ_master_to_reducers_exchange
-      - BARRIER_QUEUE_NAME=1v1_group_by_civ_reducers_barrier
-      - KEYS_QUEUE_NAME=1v1_group_by_civ_master_to_reducers_queue
-      - OUTPUT_QUEUE_NAME=1v1_group_by_civ_reducers_to_winner_rate_calculador_queue
+      - REDUCERS_QUEUE_PREFIX=group_by_civ_reducer_1v1_
     networks:
       - age_of_empires_net
 
@@ -275,30 +194,9 @@ services:
       - PLAYERS_CHUNK_SIZE=100
       - PLAYERS_INPUT_QUEUE_NAME=team_join_reducers_to_group_by_civ_master_queue
       - OUTPUT_EXCHANGE_NAME=team_group_by_civ_master_to_reducers_exchange
-      - KEYS_QUEUE_NAME=team_group_by_civ_master_to_reducers_queue
       - BARRIER_QUEUE_NAME=team_group_by_civ_reducers_barrier
       - REDUCERS_OUTPUT_QUEUE_NAME=team_group_by_civ_reducers_to_top_5_calculador_queue
-    networks:
-      - age_of_empires_net
-    depends_on:
-      - group_by_civ_reducer_team
-
-  group_by_civ_reducer_team:
-    image: rabbitmq-python-base:0.0.1
-    volumes:
-      - ./group_by_civ:/group_by_civ
-      - ./communications:/group_by_civ/communications
-      - ./master_reducers_arq:/group_by_civ/master_reducers_arq
-      - ./config:/group_by_civ/config
-      - ./logger:/group_by_civ/logger
-    entrypoint: python3 /group_by_civ/count_times_used_reducer.py
-    environment:
-      - TZ=America/Argentina/Buenos_Aires
-      - RABBITMQ_HOST=rabbitmq
-      - INPUT_EXCHANGE_NAME=team_group_by_civ_master_to_reducers_exchange
-      - BARRIER_QUEUE_NAME=team_group_by_civ_reducers_barrier
-      - KEYS_QUEUE_NAME=team_group_by_civ_master_to_reducers_queue
-      - OUTPUT_QUEUE_NAME=team_group_by_civ_reducers_to_top_5_calculador_queue
+      - REDUCERS_QUEUE_PREFIX=group_by_civ_reducer_team_
     networks:
       - age_of_empires_net
 
@@ -329,6 +227,101 @@ services:
       - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - INPUT_QUEUE_NAME=team_group_by_civ_reducers_to_top_5_calculador_queue
+    networks:
+      - age_of_empires_net
+
+  group_by_match_reducer:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./group_by_match:/age_of_empires_ii_da
+      - ./communications:/age_of_empires_ii_da/communications
+      - ./master_reducers_arq:/age_of_empires_ii_da/master_reducers_arq
+      - ./config:/age_of_empires_ii_da/config
+      - ./logger:/age_of_empires_ii_da/logger
+    entrypoint: python3 /age_of_empires_ii_da/reducer.py
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      - RABBITMQ_HOST=rabbitmq
+      - MINIMUM_RATING=1000
+      - MINIMUM_RATING_PORCENTAGE_DIFF=30
+      - INPUT_QUEUE_NAME=group_by_match_reducer_${REDUCER_ID}
+      - REDUCER_ID=${REDUCER_ID}
+    networks:
+      - age_of_empires_net
+
+  group_by_civ_reducer_1v1:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./group_by_civ:/group_by_civ
+      - ./communications:/group_by_civ/communications
+      - ./master_reducers_arq:/group_by_civ/master_reducers_arq
+      - ./config:/group_by_civ/config
+      - ./logger:/group_by_civ/logger
+    entrypoint: python3 /group_by_civ/count_wins_and_defeats_reducer.py
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      - RABBITMQ_HOST=rabbitmq
+      - BARRIER_QUEUE_NAME=1v1_group_by_civ_reducers_barrier
+      - OUTPUT_QUEUE_NAME=1v1_group_by_civ_reducers_to_winner_rate_calculador_queue
+      - INPUT_QUEUE_NAME=group_by_civ_reducer_1v1_${REDUCER_ID}
+      - REDUCER_ID=${REDUCER_ID}
+    networks:
+      - age_of_empires_net
+
+  group_by_civ_reducer_team:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./group_by_civ:/group_by_civ
+      - ./communications:/group_by_civ/communications
+      - ./master_reducers_arq:/group_by_civ/master_reducers_arq
+      - ./config:/group_by_civ/config
+      - ./logger:/group_by_civ/logger
+    entrypoint: python3 /group_by_civ/count_times_used_reducer.py
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      - RABBITMQ_HOST=rabbitmq
+      - BARRIER_QUEUE_NAME=team_group_by_civ_reducers_barrier
+      - OUTPUT_QUEUE_NAME=team_group_by_civ_reducers_to_top_5_calculador_queue
+      - INPUT_QUEUE_NAME=group_by_civ_reducer_team_${REDUCER_ID}
+      - REDUCER_ID=${REDUCER_ID}
+    networks:
+      - age_of_empires_net
+
+  join_reducer_1v1:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./join_matches_and_players:/join_matches_and_players
+      - ./communications:/join_matches_and_players/communications
+      - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
+      - ./config:/join_matches_and_players/config
+      - ./logger:/join_matches_and_players/logger
+    entrypoint: python3 /join_matches_and_players/reducer.py
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      - RABBITMQ_HOST=rabbitmq
+      - BARRIER_QUEUE_NAME=1v1_join_reducers_barrier
+      - OUTPUT_QUEUE_NAME=1v1_join_reducers_to_group_by_civ_master_queue
+      - INPUT_QUEUE_NAME=join_reducer_1v1_${REDUCER_ID}
+      - REDUCER_ID=${REDUCER_ID}
+    networks:
+      - age_of_empires_net
+
+  join_reducer_team:
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./join_matches_and_players:/join_matches_and_players
+      - ./communications:/join_matches_and_players/communications
+      - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
+      - ./config:/join_matches_and_players/config
+      - ./logger:/join_matches_and_players/logger
+    entrypoint: python3 /join_matches_and_players/reducer.py
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      - RABBITMQ_HOST=rabbitmq
+      - BARRIER_QUEUE_NAME=team_join_reducers_barrier
+      - OUTPUT_QUEUE_NAME=team_join_reducers_to_group_by_civ_master_queue
+      - INPUT_QUEUE_NAME=join_reducer_team_${REDUCER_ID}
+      - REDUCER_ID=${REDUCER_ID}
     networks:
       - age_of_empires_net
 

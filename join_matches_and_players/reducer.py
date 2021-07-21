@@ -1,5 +1,5 @@
 from communications.rabbitmq_interface import split_columns_into_list, split_rows_into_list
-from config.envvars import BARRIER_QUEUE_NAME_KEY, INPUT_EXCHANGE_NAME_KEY, KEYS_QUEUE_NAME_KEY, OUTPUT_QUEUE_NAME_KEY, get_config_param
+from config.envvars import BARRIER_QUEUE_NAME_KEY, OUTPUT_QUEUE_NAME_KEY, get_config_param
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
     JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX, \
@@ -56,26 +56,24 @@ def get_filter_players_in_matches_function(players_by_match, matches, output_que
                 output_queue, chunk_rows, players_by_match, matches)
     return filter_players_in_matches
 
-def join_players_and_matches(input_queue, output_queue, keys):
+def join_players_and_matches(input_queue, output_queue):
     players_by_match = {}
     matches = {}
 
-    logger.info(f'Starting to receive players and matches in matches with keys {keys} to join them.')
+    logger.info(f'Starting to receive players and matches in matches to join them.')
     input_queue.consume(
         get_filter_players_in_matches_function(
             players_by_match, matches, output_queue
         )
     )
 
-    logger.info(f'All players and matches in matches with keys {keys} joined.')
+    logger.info(f'All players and matches in matches joined.')
     return players_by_match
 
 
 def main():
     main_reducer(
-        get_config_param(KEYS_QUEUE_NAME_KEY, logger),
         get_config_param(BARRIER_QUEUE_NAME_KEY, logger),
-        get_config_param(INPUT_EXCHANGE_NAME_KEY, logger),
         get_config_param(OUTPUT_QUEUE_NAME_KEY, logger),
         join_players_and_matches
     )

@@ -3,8 +3,6 @@ from config.envvars import MINIMUM_RATING_KEY, MINIMUM_RATING_PORCENTAGE_DIFF_KE
 from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
     FROM_CLIENT_PLAYER_RATING_INDEX, \
     FROM_CLIENT_PLAYER_WINNER_INDEX, \
-    GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
-    GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME, \
     GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, \
     PLAYER_LOSER, \
     PLAYER_WINNER, \
@@ -14,9 +12,7 @@ from logger.logger import Logger
 
 logger = Logger()
 
-INPUT_EXCHANGE_NAME = GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME
 BARRIER_QUEUE_NAME = GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME
-KEYS_QUEUE_NAME = GROUP_BY_MATCH_MASTER_TO_REDUCERS_QUEUE_NAME
 OUTPUT_QUEUE_NAME = WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
 
 def can_match_be_1_vs_1(players_list, new_player):
@@ -38,14 +34,14 @@ def get_group_by_match_function(players_by_match):
     return group_by_match
 
 
-def process_player_by_match(input_queue, output_queue, keys):
+def process_player_by_match(input_queue, output_queue):
     players_by_match = {}
-    logger.info(f'Starting to receive players in matches with keys {keys} to group them.')
+    logger.info(f'Starting to receive players in matches to group them.')
     input_queue.consume(
         get_group_by_match_function(players_by_match)
     )
 
-    logger.info(f'All players in matches with keys {keys} grouped.')
+    logger.info(f'All players in matches grouped.')
     return players_by_match
 
 
@@ -72,17 +68,15 @@ def filter_players_by_weaker_winner(players_by_match):
     return matches_ids
 
 
-def send_matches_ids_to_client(output_queue, players_by_match, keys):
+def send_matches_ids_to_client(output_queue, players_by_match):
     matches_ids = filter_players_by_weaker_winner(players_by_match)
-    logger.info(f"All matches with keys {keys} with weaker winner found")
+    logger.info(f"All matches with weaker winner found")
 
     output_queue.send_list_as_rows(matches_ids)
 
 def main():
     main_reducer(
-        KEYS_QUEUE_NAME,
         BARRIER_QUEUE_NAME,
-        INPUT_EXCHANGE_NAME,
         OUTPUT_QUEUE_NAME,
         process_player_by_match,
         send_matches_ids_to_client
