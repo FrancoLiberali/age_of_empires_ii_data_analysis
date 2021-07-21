@@ -44,7 +44,7 @@ def add_to_matches(matches_list, match_columns):
 
 
 def get_on_sentinel_callback_function(output_1v1_exchage, output_team_exchage):
-    def on_sentinel_callback():
+    def on_sentinel_callback(_):
         logger.info(
             "Sending sentinel to next stage to notify that all matches ids has been sended")
         output_1v1_exchage.send_sentinel(MATCHES_KEY)
@@ -91,7 +91,7 @@ def main():
             output_1v1_exchage,
             output_team_exchage
         ),
-        get_on_sentinel_callback_function(
+        on_sentinel_callback=get_on_sentinel_callback_function(
             output_1v1_exchage,
             output_team_exchage
         ),

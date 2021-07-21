@@ -9,10 +9,10 @@ logger = Logger()
 
 def get_receive_sentinel_function(sentinel_received_amount, sentinels_objetive):
     # python function currying
-    def receive_sentinel():
+    def receive_sentinel(reducer_id):
         sentinel_received_amount[0] += 1
         logger.info(
-            f"Sentinels from reducers received: {sentinel_received_amount[0]} / {sentinels_objetive}")
+            f"Recived sentinel from reducer {reducer_id}. Sentinels received: {sentinel_received_amount[0]} / {sentinels_objetive}")
         if sentinel_received_amount[0] == sentinels_objetive:
             return QueueInterface.STOP_CONSUMING
         return QueueInterface.NO_STOP_CONSUMING
@@ -23,7 +23,7 @@ def receive_a_sentinel_per_reducer(barrier_queue, reducers_amount):
     sentinel_received_amount = [0]  # using a list to pass by reference
     barrier_queue.consume(
         None,
-        get_receive_sentinel_function(
+        on_sentinel_callback=get_receive_sentinel_function(
             sentinel_received_amount,
             reducers_amount
         )

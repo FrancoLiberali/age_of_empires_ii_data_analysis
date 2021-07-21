@@ -8,6 +8,7 @@ logger = Logger()
 RABBITMQ_HOST = get_config_param(RABBITMQ_HOST_KEY, logger)
 STRING_ENCODING = 'utf-8'
 SENTINEL_MESSAGE = "SENTINEL"
+SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR = " - "
 STRING_LINE_SEPARATOR = '\n'
 STRING_COLUMN_SEPARATOR = ', '
 
@@ -114,12 +115,14 @@ class QueueInterface(RabbitMQInterface):
     def _get_on_message_callback_function(self, on_message_callback, on_sentinel_callback):
         def internal_on_message_callback(channel, method, properties, body):
             actual_hash = md5(body).hexdigest()
+            chunk_string = body.decode(STRING_ENCODING)
             if actual_hash != self.last_hash:
-                chunk_string = body.decode(STRING_ENCODING)
-                if chunk_string == SENTINEL_MESSAGE:
+                splited_chunk_string = chunk_string.split(
+                    SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR)
+                if chunk_string == SENTINEL_MESSAGE or splited_chunk_string[-1] == SENTINEL_MESSAGE:
                     stop = QueueInterface.STOP_CONSUMING
                     if on_sentinel_callback is not None:
-                        stop = on_sentinel_callback()
+                        stop = on_sentinel_callback(splited_chunk_string[0])
                     if stop is QueueInterface.STOP_CONSUMING:
                         logger.info("Sentinel message received, stoping receiving")
                         channel.stop_consuming()
@@ -127,8 +130,7 @@ class QueueInterface(RabbitMQInterface):
                     on_message_callback(self, chunk_string, method.routing_key)
                 self.last_hash = actual_hash
             else:
-                logger.error("ME MEDIO HASH IGUAL")
-                logger.error(actual_hash)
+                logger.debug(f"Duplicated message: {actual_hash} {chunk_string}")
             channel.basic_ack(delivery_tag=method.delivery_tag)
         return internal_on_message_callback
 
@@ -137,7 +139,7 @@ class QueueInterface(RabbitMQInterface):
 
 
 def get_on_sentinel_send_sentinel_callback_function(output):
-    def on_sentinel_callback():
+    def on_sentinel_callback(_):
         logger.info(
             "Sending sentinel to next stage to notify that all data has been sended")
         output.send_sentinel()

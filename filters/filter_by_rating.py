@@ -47,7 +47,8 @@ def main():
         f'Starting to receive players to filter by rating > {MIN_RATING}')
     input_queue.consume(
         get_filter_by_rating_function(output_exchage),
-        get_on_sentinel_send_sentinel_callback_function(output_exchage)
+        on_sentinel_callback=get_on_sentinel_send_sentinel_callback_function(
+            output_exchage)
     )
 
     connection.close()

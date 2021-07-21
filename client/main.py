@@ -45,7 +45,7 @@ def get_receive_matches_ids_function(matches_ids):
 
 def get_print_matches_ids_function(matches_ids, message):
     # function currying in python
-    def print_matches_ids():
+    def print_matches_ids(_):
         logger.info(message)
         logger.info('\n'.join(matches_ids))
     return print_matches_ids
@@ -57,7 +57,7 @@ def get_matches_ids(queue, message):
         get_receive_matches_ids_function(
             matches_ids
         ),
-        get_print_matches_ids_function(
+        on_sentinel_callback=get_print_matches_ids_function(
             matches_ids,
             message
         ),

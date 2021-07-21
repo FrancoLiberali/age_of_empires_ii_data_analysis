@@ -1,5 +1,5 @@
-from config.envvars import INPUT_QUEUE_NAME_KEY, get_config_param
-from communications.rabbitmq_interface import QueueInterface, RabbitMQConnection
+from config.envvars import INPUT_QUEUE_NAME_KEY, REDUCER_ID_KEY, get_config_param
+from communications.rabbitmq_interface import QueueInterface, RabbitMQConnection, SENTINEL_MESSAGE, SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR
 from logger.logger import Logger
 
 
@@ -24,5 +24,7 @@ def main_reducer(
         send_result_to_next_stage_function(output_queue, result)
 
     logger.info("Sending sentinel to master to notify finished")
-    barrier_queue.send_sentinel()
+    barrier_queue.send_string(
+        f"{get_config_param(REDUCER_ID_KEY, logger)}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}{SENTINEL_MESSAGE}"
+    )
     connection.close()

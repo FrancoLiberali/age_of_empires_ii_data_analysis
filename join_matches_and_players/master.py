@@ -39,7 +39,7 @@ def add_to_dict_by_key(output_exchange,
 INPUTS_AMOUNT = 2
 
 def get_on_sentinel_callback_function(output_exchange, players_by_key, matches_by_key, sentinels_count):
-    def on_sentinel_callback():
+    def on_sentinel_callback(_):
         sentinels_count[0] += 1
         logger.info(
             f"Sentinel message: {sentinels_count[0]}/{INPUTS_AMOUNT} received")
@@ -90,7 +90,7 @@ def receive_and_dispach_players_and_matches(entry_queue, output_exchange, partit
             matches_by_key,
             partition_function
         ),
-        get_on_sentinel_callback_function(
+        on_sentinel_callback=get_on_sentinel_callback_function(
             output_exchange,
             players_by_key,
             matches_by_key,
