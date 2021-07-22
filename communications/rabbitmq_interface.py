@@ -1,4 +1,5 @@
 from hashlib import md5
+import json
 import os
 import pika
 
@@ -77,24 +78,34 @@ class QueueInterface(RabbitMQInterface):
     STOP_CONSUMING = None
     NO_STOP_CONSUMING = 1
 
-    def __init__(self, rabbit_MQ_connection, name, private=False):
+    def __init__(self, rabbit_MQ_connection, name, private=False, last_hash_per_routing_key=False):
         RabbitMQInterface.__init__(self, rabbit_MQ_connection, name)
         self.private = private
+        self.last_hash_per_routing_key = last_hash_per_routing_key
         if not private:
             os.makedirs(os.path.dirname(LAST_HASH_DIR_PATH), exist_ok=True)
             last_hash_file_path = LAST_HASH_DIR_PATH + name + ".txt"
             try:
                 self.last_hash_file = open(last_hash_file_path, "r+")
-                self.last_hash = self.last_hash_file.readline()
-                logger.debug(f"{self.name} - Initial last hash: {self.last_hash}")
+                if self.last_hash_per_routing_key:
+                    self.last_hash = json.load(self.last_hash_file)
+                else:
+                    self.last_hash = self.last_hash_file.readline()
             except FileNotFoundError:
-                logger.debug(f"{self.name} - Last hash file not found, creating. No initial last hash")
+                logger.debug(f"{self.name} - Last hash file not found, creating.")
                 self.last_hash_file = open(last_hash_file_path, "w+")
-                self.last_hash = ''
+                if self.last_hash_per_routing_key:
+                    self.last_hash = {}
+                else:
+                    self.last_hash = ''
+
+            logger.debug(
+                    f"{self.name} - Initial last hash: {self.last_hash}")
             self.channel.queue_declare(queue=self.name)
 
     @classmethod
     def newPrivate(cls, rabbit_MQ_connection):
+        # only for queues which receive messages from client (no possible duplicates)
         result = rabbit_MQ_connection.channel.queue_declare(queue='')
         private_queue_name = result.method.queue
         return cls(rabbit_MQ_connection, private_queue_name, private=True)
@@ -128,7 +139,7 @@ class QueueInterface(RabbitMQInterface):
         def internal_on_message_callback(channel, method, properties, body):
             actual_hash = md5(body).hexdigest()
             chunk_string = body.decode(STRING_ENCODING)
-            if self._is_different_to_last_hash(actual_hash):
+            if self._is_different_to_last_hash(actual_hash, method.routing_key):
                 splited_chunk_string = chunk_string.split(
                     SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR)
                 if chunk_string == SENTINEL_MESSAGE or splited_chunk_string[-1] == SENTINEL_MESSAGE:
@@ -140,24 +151,31 @@ class QueueInterface(RabbitMQInterface):
                         channel.stop_consuming()
                 else:
                     on_message_callback(self, chunk_string, method.routing_key)
-                self._store_actual_hash(actual_hash)
+                self._store_actual_hash(actual_hash, method.routing_key)
             else:
                 logger.debug(
                     f"{self.name} - Duplicated message: {actual_hash} {chunk_string}")
             channel.basic_ack(delivery_tag=method.delivery_tag)
         return internal_on_message_callback
 
-    def _is_different_to_last_hash(self, actual_hash):
+    def _is_different_to_last_hash(self, actual_hash, routing_key):
         if not self.private:
-            return actual_hash != self.last_hash
+            if self.last_hash_per_routing_key:
+                return self.last_hash.get(routing_key, '') != actual_hash
+            else:
+                return actual_hash != self.last_hash
         else:
             return True
 
-    def _store_actual_hash(self, actual_hash):
+    def _store_actual_hash(self, actual_hash, routing_key):
         if not self.private:
-            self.last_hash = actual_hash
-            self.last_hash_file.seek(0)
-            self.last_hash_file.write(self.last_hash)
+            if self.last_hash_per_routing_key:
+                self.last_hash[routing_key] = actual_hash
+                json.dump(self.last_hash, self.last_hash_file)
+            else:
+                self.last_hash = actual_hash
+                self.last_hash_file.seek(0)
+                self.last_hash_file.write(self.last_hash)
 
     def stop_consuming(self):
         self.channel.stop_consuming()

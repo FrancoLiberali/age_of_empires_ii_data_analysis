@@ -111,7 +111,8 @@ def subscribe_to_entries(connection):
 
     input_queue = QueueInterface(
         connection,
-        get_config_param(INPUT_QUEUE_NAME_KEY, logger)
+        get_config_param(INPUT_QUEUE_NAME_KEY, logger),
+        last_hash_per_routing_key=True
     )
     input_queue.bind(matches_input_exchage, MATCHES_KEY)
     input_queue.bind(players_input_exchage, PLAYERS_KEY)
