@@ -40,9 +40,7 @@ def get_on_sentinel_callback_function(output_exchange, players_by_key):
 
 def get_dispach_to_reducers_function(output_exchange, players_by_key, partition_function):
     def dispach_to_reducers(queue, received_string, _):
-        received_players = [
-            player_string for player_string in split_rows_into_list(received_string)
-        ]
+        received_players = split_rows_into_list(received_string)
         add_to_players_by_key(
             output_exchange,
             partition_function,

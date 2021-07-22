@@ -6,7 +6,7 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     MATCHES_KEY, \
     PLAYERS_KEY
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, split_columns_into_list, split_rows_into_list
-from master_reducers_arq.master import main_master, send_normal_sentinel
+from master_reducers_arq.master import main_master, send_sentinel_with_master_id_and_last_hash
 from logger.logger import Logger
 
 logger = Logger()
@@ -56,7 +56,7 @@ def get_on_sentinel_callback_function(output_exchange, players_by_key, matches_b
 
 def get_dispach_to_reducers_function(output_exchange, players_by_key, matches_by_key, partition_function):
     def dispach_to_reducers(queue, received_string, routing_key):
-        received_entries = [line for line in split_rows_into_list(received_string)]
+        received_entries = split_rows_into_list(received_string)
         if routing_key == PLAYERS_KEY:
             add_to_dict_by_key(
                 output_exchange,
@@ -126,7 +126,7 @@ def main():
         get_config_param(OUTPUT_EXCHANGE_NAME_KEY, logger),
         subscribe_to_entries,
         receive_and_dispach_players_and_matches,
-        send_normal_sentinel
+        send_sentinel_with_master_id_and_last_hash
     )
 
 

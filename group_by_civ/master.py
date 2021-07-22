@@ -36,8 +36,7 @@ def get_on_sentinel_callback_function(output_exchange, players_by_key):
 
 def get_dispach_to_reducers_function(output_exchange, players_by_key, partition_function):
     def dispach_to_reducers(queue, received_string, _):
-        received_players = [
-            player_string for player_string in split_rows_into_list(received_string)]
+        received_players = split_rows_into_list(received_string, skip_header=True)
         add_to_players_by_key(
             output_exchange,
             partition_function,
@@ -64,7 +63,8 @@ def receive_and_dispach_players(entry_queue, output_exchange, partition_function
 def declare_input_queue(connection):
     return QueueInterface(
         connection,
-        get_config_param(PLAYERS_INPUT_QUEUE_NAME_KEY, logger)
+        get_config_param(PLAYERS_INPUT_QUEUE_NAME_KEY, logger),
+        last_hash_per_entry=QueueInterface.LAST_HASH_PER_REDUCER_ID
     )
 
 def main():
