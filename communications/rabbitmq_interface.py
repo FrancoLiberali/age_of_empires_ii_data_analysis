@@ -45,9 +45,11 @@ class RabbitMQInterface:
         if len(list) > 0:
             self.send_string(STRING_LINE_SEPARATOR.join(list), routing_key)
 
-    def send_list_of_columns(self, list_of_columns, routing_key=''):
+    def send_list_of_columns(self, list_of_columns, routing_key='', header_line=None):
         if len(list_of_columns) > 0:
             list_string = self._get_string_from_list_of_columns(list_of_columns)
+            if header_line is not None:
+                list_string = f"{header_line}{STRING_LINE_SEPARATOR}{list_string}"
             self.send_string(list_string, routing_key)
 
 
@@ -78,26 +80,32 @@ class QueueInterface(RabbitMQInterface):
     STOP_CONSUMING = None
     NO_STOP_CONSUMING = 1
 
-    def __init__(self, rabbit_MQ_connection, name, private=False, last_hash_per_routing_key=False):
+    REDUCER_ID_INDEX = 0
+    SENTINEL_INDEX = -1
+
+    LAST_HASH_PER_ROUTING_KEY = 1
+    LAST_HASH_PER_REDUCER_ID = 2
+
+    def __init__(self, rabbit_MQ_connection, name, private=False, last_hash_per_entry=None):
         RabbitMQInterface.__init__(self, rabbit_MQ_connection, name)
         self.private = private
-        self.last_hash_per_routing_key = last_hash_per_routing_key
+        self.last_hash_per_entry = last_hash_per_entry
         if not private:
             os.makedirs(os.path.dirname(LAST_HASH_DIR_PATH), exist_ok=True)
             last_hash_file_path = LAST_HASH_DIR_PATH + name + ".txt"
             try:
                 self.last_hash_file = open(last_hash_file_path, "r+")
-                if self.last_hash_per_routing_key:
-                    self.last_hash = json.load(self.last_hash_file)
-                else:
+                if self.last_hash_per_entry is None:
                     self.last_hash = self.last_hash_file.readline()
+                else:
+                    self.last_hash = json.load(self.last_hash_file)
             except FileNotFoundError:
                 logger.debug(f"{self.name} - Last hash file not found, creating.")
                 self.last_hash_file = open(last_hash_file_path, "w+")
-                if self.last_hash_per_routing_key:
-                    self.last_hash = {}
-                else:
+                if self.last_hash_per_entry is None:
                     self.last_hash = ''
+                else:
+                    self.last_hash = {}
 
             logger.debug(
                     f"{self.name} - Initial last hash: {self.last_hash}")
@@ -139,43 +147,57 @@ class QueueInterface(RabbitMQInterface):
         def internal_on_message_callback(channel, method, properties, body):
             actual_hash = md5(body).hexdigest()
             chunk_string = body.decode(STRING_ENCODING)
-            if self._is_different_to_last_hash(actual_hash, method.routing_key):
+            entry = self._get_entry(method, chunk_string)
+            if self._is_different_to_last_hash(actual_hash, entry):
                 splited_chunk_string = chunk_string.split(
                     SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR)
-                if chunk_string == SENTINEL_MESSAGE or splited_chunk_string[-1] == SENTINEL_MESSAGE:
+                if chunk_string == SENTINEL_MESSAGE or splited_chunk_string[QueueInterface.SENTINEL_INDEX] == SENTINEL_MESSAGE:
                     stop = QueueInterface.STOP_CONSUMING
                     if on_sentinel_callback is not None:
-                        stop = on_sentinel_callback(splited_chunk_string[0])
+                        stop = on_sentinel_callback(
+                            splited_chunk_string[QueueInterface.REDUCER_ID_INDEX]
+                        )
                     if stop is QueueInterface.STOP_CONSUMING:
                         logger.info("Sentinel message received, stoping receiving")
                         channel.stop_consuming()
                 else:
                     on_message_callback(self, chunk_string, method.routing_key)
-                self._store_actual_hash(actual_hash, method.routing_key)
+                self._store_actual_hash(actual_hash, entry)
             else:
                 logger.debug(
                     f"{self.name} - Duplicated message: {actual_hash} {chunk_string}")
             channel.basic_ack(delivery_tag=method.delivery_tag)
         return internal_on_message_callback
 
-    def _is_different_to_last_hash(self, actual_hash, routing_key):
+    def _get_entry(self, method, chunk_string):
+        if self.last_hash_per_entry is None:
+            return None
+        elif self.last_hash_per_entry == QueueInterface.LAST_HASH_PER_ROUTING_KEY:
+            return method.routing_key
+        elif self.last_hash_per_entry == QueueInterface.LAST_HASH_PER_REDUCER_ID:
+            splited_chunk_string = chunk_string.split(
+                SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR)
+            return splited_chunk_string[QueueInterface.REDUCER_ID_INDEX]
+
+    def _is_different_to_last_hash(self, actual_hash, entry):
         if not self.private:
-            if self.last_hash_per_routing_key:
-                return self.last_hash.get(routing_key, '') != actual_hash
-            else:
+            if self.last_hash_per_entry is None:
                 return actual_hash != self.last_hash
+            else:
+                return self.last_hash.get(entry, '') != actual_hash
         else:
             return True
 
-    def _store_actual_hash(self, actual_hash, routing_key):
+    def _store_actual_hash(self, actual_hash, entry):
         if not self.private:
-            if self.last_hash_per_routing_key:
-                self.last_hash[routing_key] = actual_hash
-                json.dump(self.last_hash, self.last_hash_file)
-            else:
+            if self.last_hash_per_entry is None:
                 self.last_hash = actual_hash
                 self.last_hash_file.seek(0)
                 self.last_hash_file.write(self.last_hash)
+            else:
+                self.last_hash[entry] = actual_hash
+                self.last_hash_file.seek(0)
+                json.dump(self.last_hash, self.last_hash_file)
 
     def stop_consuming(self):
         self.channel.stop_consuming()
@@ -191,5 +213,8 @@ def get_on_sentinel_send_sentinel_callback_function(output):
 def split_columns_into_list(columns_string):
     return columns_string.split(STRING_COLUMN_SEPARATOR)
 
-def split_rows_into_list(rows_string):
-    return rows_string.split(STRING_LINE_SEPARATOR)
+def split_rows_into_list(rows_string, skip_header=False):
+    splited = rows_string.split(STRING_LINE_SEPARATOR)
+    if skip_header:
+        splited = splited[1:]
+    return splited

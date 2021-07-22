@@ -1,6 +1,6 @@
 from config.envvars import REDUCERS_AMOUNT_KEY, REDUCERS_QUEUE_PREFIX_KEY, get_config_param
 from communications.constants import SENTINEL_KEY
-from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection
+from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, SENTINEL_MESSAGE, SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR
 from logger.logger import Logger
 from master_reducers_arq.partition_function import PartitionFunction
 
@@ -55,7 +55,8 @@ def main_master(
         reducers_output_queue_name,
         output_exchange_name,
         subscribe_to_entries_function,
-        receive_and_dispach_function
+        receive_and_dispach_function,
+        send_last_sentinel_function
     ):
     connection = RabbitMQConnection()
 
@@ -89,6 +90,18 @@ def main_master(
     receive_a_sentinel_per_reducer(barrier_queue, reducers_amount)
 
     logger.info("Sending sentinel to next stage to notify all data sended")
-    reducers_output_queue.send_sentinel()
+    send_last_sentinel_function(reducers_output_queue, entry_queue)
 
     connection.close()
+
+
+def send_normal_sentinel(reducers_output_queue, _):
+    reducers_output_queue.send_sentinel()
+
+
+MASTER_ID = "master"
+
+def send_sentinel_with_master_id_and_last_hash(reducers_output_queue, entry_queue):
+    reducers_output_queue.send_string(
+        f"{MASTER_ID}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}{entry_queue.last_hash}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}{SENTINEL_MESSAGE}"
+    )

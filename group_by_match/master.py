@@ -5,7 +5,7 @@ from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
     PLAYERS_FANOUT_EXCHANGE_NAME, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, split_columns_into_list, split_rows_into_list
-from master_reducers_arq.master import main_master
+from master_reducers_arq.master import main_master, send_normal_sentinel
 from logger.logger import Logger
 
 logger = Logger()
@@ -80,7 +80,8 @@ def main():
         WEAKER_WINNER_TO_CLIENT_QUEUE_NAME,
         GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME,
         subscribe_to_entries,
-        receive_and_dispach_players
+        receive_and_dispach_players,
+        send_normal_sentinel
     )
 
 if __name__ == '__main__':

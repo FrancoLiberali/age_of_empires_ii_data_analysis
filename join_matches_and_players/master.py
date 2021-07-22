@@ -6,7 +6,7 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     MATCHES_KEY, \
     PLAYERS_KEY
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, split_columns_into_list, split_rows_into_list
-from master_reducers_arq.master import main_master
+from master_reducers_arq.master import main_master, send_normal_sentinel
 from logger.logger import Logger
 
 logger = Logger()
@@ -112,7 +112,7 @@ def subscribe_to_entries(connection):
     input_queue = QueueInterface(
         connection,
         get_config_param(INPUT_QUEUE_NAME_KEY, logger),
-        last_hash_per_routing_key=True
+        last_hash_per_entry=QueueInterface.LAST_HASH_PER_ROUTING_KEY
     )
     input_queue.bind(matches_input_exchage, MATCHES_KEY)
     input_queue.bind(players_input_exchage, PLAYERS_KEY)
@@ -125,7 +125,8 @@ def main():
         get_config_param(REDUCERS_OUTPUT_QUEUE_NAME_KEY, logger),
         get_config_param(OUTPUT_EXCHANGE_NAME_KEY, logger),
         subscribe_to_entries,
-        receive_and_dispach_players_and_matches
+        receive_and_dispach_players_and_matches,
+        send_normal_sentinel
     )
 
 
