@@ -9,7 +9,7 @@ from communications.constants import MATCHES_FANOUT_EXCHANGE_NAME, \
     TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME, \
     WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import QueueInterface, ExchangeInterface, RabbitMQConnection, split_rows_into_list
+from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, ExchangeInterface, RabbitMQConnection, split_rows_into_list
 from logger.logger import Logger
 
 MATCHES_CSV_FILE = '/matches.csv'
@@ -146,7 +146,7 @@ def receive_weaker_winner_matches_ids():
     queue = QueueInterface(
         connection,
         WEAKER_WINNER_TO_CLIENT_QUEUE_NAME,
-        last_hash_per_entry=QueueInterface.LAST_HASH_PER_REDUCER_ID
+        last_hash_strategy=LastHashStrategy.LAST_HASH_PER_REDUCER_ID
     )
 
     logger.info("Starting to receive ids of matches with weaker winner replied")

@@ -78,6 +78,11 @@ class ExchangeInterface(RabbitMQInterface):
             body=message.encode(STRING_ENCODING)
         )
 
+class LastHashStrategy:
+    NO_LAST_HASH_SAVING = 0
+    ONE_LAST_HASH_SAVING = 1
+    LAST_HASH_PER_ROUTING_KEY = 2
+    LAST_HASH_PER_REDUCER_ID = 3
 
 class QueueInterface(RabbitMQInterface):
     STOP_CONSUMING = None
@@ -86,41 +91,29 @@ class QueueInterface(RabbitMQInterface):
     REDUCER_ID_INDEX = 0
     SENTINEL_INDEX = -1
 
-    LAST_HASH_PER_ROUTING_KEY = 1
-    LAST_HASH_PER_REDUCER_ID = 2
-
-    def __init__(self, rabbit_MQ_connection, name, private=False, last_hash_per_entry=None):
+    def __init__(self, rabbit_MQ_connection, name, last_hash_strategy=LastHashStrategy.ONE_LAST_HASH_SAVING):
         RabbitMQInterface.__init__(self, rabbit_MQ_connection, name)
-        self.private = private
-        self.last_hash_per_entry = last_hash_per_entry
-        if not private:
+        self.last_hash_strategy = last_hash_strategy
+        if self.last_hash_strategy != LastHashStrategy.NO_LAST_HASH_SAVING:
             os.makedirs(os.path.dirname(LAST_HASH_DIR_PATH), exist_ok=True)
             last_hash_file_path = LAST_HASH_DIR_PATH + name + ".txt"
             try:
                 self.last_hash_file = open(last_hash_file_path, "r+")
-                if self.last_hash_per_entry is None:
+                if self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
                     self.last_hash = self.last_hash_file.readline()
                 else:
                     self.last_hash = json.load(self.last_hash_file)
             except FileNotFoundError:
                 logger.debug(f"{self.name} - Last hash file not found, creating.")
                 self.last_hash_file = open(last_hash_file_path, "w+")
-                if self.last_hash_per_entry is None:
+                if self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
                     self.last_hash = ''
                 else:
                     self.last_hash = {}
 
             logger.debug(
                     f"{self.name} - Initial last hash: {self.last_hash}")
-            self.channel.queue_declare(queue=self.name)
-
-    @classmethod
-    def newPrivate(cls, rabbit_MQ_connection):
-        # TODO no usar mas, sino cuando un nodo se levanta crea otra cola y pierde toda la entrada, pasar el private a no guardar last hash
-        # only for queues which receive messages from client (no possible duplicates)
-        result = rabbit_MQ_connection.channel.queue_declare(queue='')
-        private_queue_name = result.method.queue
-        return cls(rabbit_MQ_connection, private_queue_name, private=True)
+        self.channel.queue_declare(queue=self.name)
 
     def bind(self, exchange, routing_key=None):
         self.channel.queue_bind(
@@ -174,34 +167,32 @@ class QueueInterface(RabbitMQInterface):
         return internal_on_message_callback
 
     def _get_entry(self, method, chunk_string):
-        if self.last_hash_per_entry is None:
-            return None
-        elif self.last_hash_per_entry == QueueInterface.LAST_HASH_PER_ROUTING_KEY:
+        if self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_ROUTING_KEY:
             return method.routing_key
-        elif self.last_hash_per_entry == QueueInterface.LAST_HASH_PER_REDUCER_ID:
+        elif self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_REDUCER_ID:
             splited_chunk_string = chunk_string.split(
                 SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR)
             return splited_chunk_string[QueueInterface.REDUCER_ID_INDEX]
+        else:
+            return None
 
     def _is_different_to_last_hash(self, actual_hash, entry):
-        if not self.private:
-            if self.last_hash_per_entry is None:
-                return actual_hash != self.last_hash
-            else:
-                return self.last_hash.get(entry, '') != actual_hash
-        else:
+        if self.last_hash_strategy == LastHashStrategy.NO_LAST_HASH_SAVING:
             return True
+        elif self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
+            return actual_hash != self.last_hash
+        else:
+            return self.last_hash.get(entry, '') != actual_hash
 
     def _store_actual_hash(self, actual_hash, entry):
-        if not self.private:
-            if self.last_hash_per_entry is None:
-                self.last_hash = actual_hash
-                self.last_hash_file.seek(0)
-                self.last_hash_file.write(self.last_hash)
-            else:
-                self.last_hash[entry] = actual_hash
-                self.last_hash_file.seek(0)
-                json.dump(self.last_hash, self.last_hash_file)
+        if self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
+            self.last_hash = actual_hash
+            self.last_hash_file.seek(0)
+            self.last_hash_file.write(self.last_hash)
+        elif self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_REDUCER_ID or self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_ROUTING_KEY:
+            self.last_hash[entry] = actual_hash
+            self.last_hash_file.seek(0)
+            json.dump(self.last_hash, self.last_hash_file)
 
     def stop_consuming(self):
         self.channel.stop_consuming()

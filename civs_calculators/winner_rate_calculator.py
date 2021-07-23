@@ -1,6 +1,6 @@
 from config.envvars import INPUT_QUEUE_NAME_KEY, get_config_param
 from communications.constants import WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import QueueInterface, RabbitMQConnection, split_columns_into_list, split_rows_into_list
+from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, RabbitMQConnection, split_columns_into_list, split_rows_into_list
 from logger.logger import Logger
 
 FROM_GROUP_BY_CIV_CIV_INDEX = 0
@@ -30,7 +30,7 @@ def main():
     input_queue = QueueInterface(
         connection,
         get_config_param(INPUT_QUEUE_NAME_KEY, logger),
-        last_hash_per_entry=QueueInterface.LAST_HASH_PER_REDUCER_ID
+        last_hash_strategy=LastHashStrategy.LAST_HASH_PER_REDUCER_ID
     )
     output_queue = QueueInterface(
         connection, WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME)

@@ -1,6 +1,6 @@
 from config.envvars import BARRIER_QUEUE_NAME_KEY, OUTPUT_EXCHANGE_NAME_KEY, PLAYERS_CHUNK_SIZE_KEY, PLAYERS_INPUT_QUEUE_NAME_KEY, REDUCERS_OUTPUT_QUEUE_NAME_KEY, get_config_param
 from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX
-from communications.rabbitmq_interface import QueueInterface, split_columns_into_list, split_rows_into_list
+from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, split_columns_into_list, split_rows_into_list
 from master_reducers_arq.master import main_master
 from logger.logger import Logger
 
@@ -64,7 +64,7 @@ def declare_input_queue(connection):
     return QueueInterface(
         connection,
         get_config_param(PLAYERS_INPUT_QUEUE_NAME_KEY, logger),
-        last_hash_per_entry=QueueInterface.LAST_HASH_PER_REDUCER_ID
+        last_hash_strategy=LastHashStrategy.LAST_HASH_PER_REDUCER_ID
     )
 
 def main():

@@ -1,8 +1,9 @@
 from config.envvars import LADDER_1V1_KEY, LADDER_TEAM_KEY, MAP_ARENA_KEY, MAP_ISLANDS_KEY, NO_MIRROR_KEY, OUTPUT_EXCHANGE_NAME_1V1_KEY, OUTPUT_EXCHANGE_NAME_TEAM_KEY, get_config_params
-from communications.constants import MATCHES_KEY, \
+from communications.constants import FILTER_BY_LADDER_MAP_AND_MIRROR_QUEUE_NAME, \
+    MATCHES_KEY, \
     FROM_CLIENT_MATCH_TOKEN_INDEX, \
     MATCHES_FANOUT_EXCHANGE_NAME
-from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, split_columns_into_list, split_rows_into_list
+from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, RabbitMQConnection, split_columns_into_list, split_rows_into_list
 from logger.logger import Logger
 
 logger = Logger()
@@ -76,7 +77,11 @@ def main():
     input_exchage = ExchangeInterface.newFanout(
         connection, MATCHES_FANOUT_EXCHANGE_NAME)
 
-    input_queue = QueueInterface.newPrivate(connection)
+    input_queue = QueueInterface(
+        connection,
+        FILTER_BY_LADDER_MAP_AND_MIRROR_QUEUE_NAME,
+        LastHashStrategy.NO_LAST_HASH_SAVING
+    )
     input_queue.bind(input_exchage)
 
     output_1v1_exchage = ExchangeInterface.newDirect(
