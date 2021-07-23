@@ -9,7 +9,7 @@ from communications.constants import MATCHES_FANOUT_EXCHANGE_NAME, \
     TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME, \
     WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import QueueInterface, ExchangeInterface, RabbitMQConnection, split_columns_into_list
+from communications.rabbitmq_interface import QueueInterface, ExchangeInterface, RabbitMQConnection, split_rows_into_list
 from logger.logger import Logger
 
 MATCHES_CSV_FILE = '/matches.csv'
@@ -36,10 +36,10 @@ ENTRY_PLAYERS_INDEXES = get_config_params([
     ], logger)
 
 
-def get_receive_matches_ids_function(matches_ids):
+def get_receive_matches_ids_function(matches_ids, skip_header):
     # function currying in python
     def receive_matches_ids(queue, received_string, _):
-        for match_id in split_columns_into_list(received_string):
+        for match_id in split_rows_into_list(received_string, skip_header=skip_header):
             matches_ids.append(match_id)
     return receive_matches_ids
 
@@ -51,11 +51,12 @@ def get_print_matches_ids_function(matches_ids, message):
     return print_matches_ids
 
 
-def get_matches_ids(queue, message):
+def get_matches_ids(queue, message, skip_header=False):
     matches_ids = []
     queue.consume(
         get_receive_matches_ids_function(
-            matches_ids
+            matches_ids,
+            skip_header
         ),
         on_sentinel_callback=get_print_matches_ids_function(
             matches_ids,
@@ -143,12 +144,16 @@ def send_players():
 def receive_weaker_winner_matches_ids():
     connection = RabbitMQConnection()
     queue = QueueInterface(
-        connection, WEAKER_WINNER_TO_CLIENT_QUEUE_NAME)
+        connection,
+        WEAKER_WINNER_TO_CLIENT_QUEUE_NAME,
+        last_hash_per_entry=QueueInterface.LAST_HASH_PER_REDUCER_ID
+    )
 
     logger.info("Starting to receive ids of matches with weaker winner replied")
     get_matches_ids(
         queue,
-        "Los IDs de matches en partidas 1v1 donde el ganador tiene un rating 30 % menor al perdedor y el rating del ganador es superior a 1000 son: "
+        "Los IDs de matches en partidas 1v1 donde el ganador tiene un rating 30 % menor al perdedor y el rating del ganador es superior a 1000 son: ",
+        skip_header=True
     )
     connection.close()
 

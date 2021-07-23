@@ -6,7 +6,7 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     MATCHES_KEY, \
     PLAYERS_KEY
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, split_columns_into_list, split_rows_into_list
-from master_reducers_arq.master import main_master, send_sentinel_with_master_id_and_last_hash
+from master_reducers_arq.master import main_master
 from logger.logger import Logger
 
 logger = Logger()
@@ -125,8 +125,7 @@ def main():
         get_config_param(REDUCERS_OUTPUT_QUEUE_NAME_KEY, logger),
         get_config_param(OUTPUT_EXCHANGE_NAME_KEY, logger),
         subscribe_to_entries,
-        receive_and_dispach_players_and_matches,
-        send_sentinel_with_master_id_and_last_hash
+        receive_and_dispach_players_and_matches
     )
 
 

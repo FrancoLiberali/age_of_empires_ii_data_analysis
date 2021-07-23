@@ -1,5 +1,5 @@
-from communications.rabbitmq_interface import split_columns_into_list, split_rows_into_list
-from config.envvars import MINIMUM_RATING_KEY, MINIMUM_RATING_PORCENTAGE_DIFF_KEY, get_config_param
+from communications.rabbitmq_interface import SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR, split_columns_into_list, split_rows_into_list
+from config.envvars import MINIMUM_RATING_KEY, MINIMUM_RATING_PORCENTAGE_DIFF_KEY, REDUCER_ID_KEY, get_config_param
 from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
     FROM_CLIENT_PLAYER_RATING_INDEX, \
     FROM_CLIENT_PLAYER_WINNER_INDEX, \
@@ -14,6 +14,8 @@ logger = Logger()
 
 BARRIER_QUEUE_NAME = GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME
 OUTPUT_QUEUE_NAME = WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
+
+HEADER_LINE = f"{get_config_param(REDUCER_ID_KEY, logger)}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}"
 
 def can_match_be_1_vs_1(players_list, new_player):
     return (players_list is not None and (len(players_list) == 0 or (len(players_list) == 1 and players_list[0][FROM_CLIENT_PLAYER_WINNER_INDEX] != new_player[FROM_CLIENT_PLAYER_WINNER_INDEX])))
@@ -72,7 +74,10 @@ def send_matches_ids_to_client(output_queue, players_by_match):
     matches_ids = filter_players_by_weaker_winner(players_by_match)
     logger.info(f"All matches with weaker winner found")
 
-    output_queue.send_list_as_rows(matches_ids)
+    output_queue.send_list_as_rows(
+        matches_ids,
+        header_line=HEADER_LINE
+    )
 
 def main():
     main_reducer(

@@ -1,7 +1,7 @@
 from config.envvars import BARRIER_QUEUE_NAME_KEY, OUTPUT_EXCHANGE_NAME_KEY, PLAYERS_CHUNK_SIZE_KEY, PLAYERS_INPUT_QUEUE_NAME_KEY, REDUCERS_OUTPUT_QUEUE_NAME_KEY, get_config_param
 from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX
 from communications.rabbitmq_interface import QueueInterface, split_columns_into_list, split_rows_into_list
-from master_reducers_arq.master import main_master, send_sentinel_with_master_id_and_last_hash
+from master_reducers_arq.master import main_master
 from logger.logger import Logger
 
 logger = Logger()
@@ -73,8 +73,7 @@ def main():
         get_config_param(REDUCERS_OUTPUT_QUEUE_NAME_KEY, logger),
         get_config_param(OUTPUT_EXCHANGE_NAME_KEY, logger),
         declare_input_queue,
-        receive_and_dispach_players,
-        send_sentinel_with_master_id_and_last_hash
+        receive_and_dispach_players
     )
 
 

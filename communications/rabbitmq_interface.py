@@ -41,9 +41,12 @@ class RabbitMQInterface:
             ]
         )
 
-    def send_list_as_rows(self, list, routing_key=''):
+    def send_list_as_rows(self, list, routing_key='', header_line=None):
         if len(list) > 0:
-            self.send_string(STRING_LINE_SEPARATOR.join(list), routing_key)
+            list_string = STRING_LINE_SEPARATOR.join(list)
+            if header_line is not None:
+                list_string = f"{header_line}{STRING_LINE_SEPARATOR}{list_string}"
+            self.send_string(list_string, routing_key)
 
     def send_list_of_columns(self, list_of_columns, routing_key='', header_line=None):
         if len(list_of_columns) > 0:
@@ -113,6 +116,7 @@ class QueueInterface(RabbitMQInterface):
 
     @classmethod
     def newPrivate(cls, rabbit_MQ_connection):
+        # TODO no usar mas, sino cuando un nodo se levanta crea otra cola y pierde toda la entrada, pasar el private a no guardar last hash
         # only for queues which receive messages from client (no possible duplicates)
         result = rabbit_MQ_connection.channel.queue_declare(queue='')
         private_queue_name = result.method.queue

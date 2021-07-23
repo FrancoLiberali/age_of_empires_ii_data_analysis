@@ -1,11 +1,11 @@
 from config.envvars import PLAYERS_CHUNK_SIZE_KEY, get_config_param
-from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
+from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, GROUP_BY_MATCH_MASTER_PLAYERS_INPUT_QUEUE_NAME, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
     GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, \
     PLAYERS_FANOUT_EXCHANGE_NAME, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, split_columns_into_list, split_rows_into_list
-from master_reducers_arq.master import main_master, send_normal_sentinel
+from master_reducers_arq.master import main_master
 from logger.logger import Logger
 
 logger = Logger()
@@ -66,7 +66,9 @@ def receive_and_dispach_players(entry_queue, output_exchange, partition_function
 def subscribe_to_entries(connection):
     input_exchage = ExchangeInterface.newFanout(
         connection, PLAYERS_FANOUT_EXCHANGE_NAME)
-    input_queue = QueueInterface.newPrivate(connection)
+    # TODO guarda last hash solo para usarlo en el sentinel final, no hay posibles duplicados a la entrada
+    input_queue = QueueInterface(
+        connection, GROUP_BY_MATCH_MASTER_PLAYERS_INPUT_QUEUE_NAME)
     input_queue.bind(input_exchage)
 
     return input_queue
@@ -78,8 +80,7 @@ def main():
         WEAKER_WINNER_TO_CLIENT_QUEUE_NAME,
         GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME,
         subscribe_to_entries,
-        receive_and_dispach_players,
-        send_normal_sentinel
+        receive_and_dispach_players
     )
 
 if __name__ == '__main__':

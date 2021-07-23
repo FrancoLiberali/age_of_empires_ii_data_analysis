@@ -55,8 +55,7 @@ def main_master(
         reducers_output_queue_name,
         output_exchange_name,
         subscribe_to_entries_function,
-        receive_and_dispach_function,
-        send_last_sentinel_function
+        receive_and_dispach_function
     ):
     connection = RabbitMQConnection()
 
@@ -90,14 +89,11 @@ def main_master(
     receive_a_sentinel_per_reducer(barrier_queue, reducers_amount)
 
     logger.info("Sending sentinel to next stage to notify all data sended")
-    send_last_sentinel_function(reducers_output_queue, entry_queue)
+    send_sentinel_with_master_id_and_last_hash(
+        reducers_output_queue, entry_queue
+    )
 
     connection.close()
-
-
-def send_normal_sentinel(reducers_output_queue, _):
-    reducers_output_queue.send_sentinel()
-
 
 MASTER_ID = "master"
 
