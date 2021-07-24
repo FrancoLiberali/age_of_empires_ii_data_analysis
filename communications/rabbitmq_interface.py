@@ -1,5 +1,5 @@
 from logging import log
-from communications.file import dump_dict_into_json, file_open_or_create, write_at_beginning
+from communications.file import JsonFile, OneLineFile
 from hashlib import md5
 import pika
 
@@ -96,12 +96,17 @@ class QueueInterface(RabbitMQInterface):
         self.last_hash_strategy = last_hash_strategy
         if self.last_hash_strategy != LastHashStrategy.NO_LAST_HASH_SAVING:
             # TODO nunca se hace el close
-            is_json = (self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_ROUTING_KEY or self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_REDUCER_ID)
-            self.last_hash_file, self.last_hash = file_open_or_create(
-                LAST_HASH_DIR_PATH,
-                name + ".txt",
-                is_json
-            )
+            if self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_ROUTING_KEY or self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_REDUCER_ID:
+                self.last_hash_file = JsonFile(
+                    LAST_HASH_DIR_PATH,
+                    name + ".json"
+                )
+            elif self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
+                self.last_hash_file = OneLineFile(
+                    LAST_HASH_DIR_PATH,
+                    name + ".txt"
+                )
+            self.last_hash = self.last_hash_file.content
 
             logger.debug(
                     f"{self.name} - Initial last hash: {self.last_hash}")
@@ -179,10 +184,10 @@ class QueueInterface(RabbitMQInterface):
     def _store_actual_hash(self, actual_hash, entry):
         if self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
             self.last_hash = actual_hash
-            write_at_beginning(self.last_hash_file, self.last_hash)
+            self.last_hash_file.write(self.last_hash)
         elif self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_REDUCER_ID or self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_ROUTING_KEY:
             self.last_hash[entry] = actual_hash
-            dump_dict_into_json(self.last_hash_file, self.last_hash)
+            self.last_hash_file.write(self.last_hash)
 
     def stop_consuming(self):
         self.channel.stop_consuming()

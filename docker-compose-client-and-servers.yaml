@@ -9,6 +9,7 @@ services:
       - ./communications:/client/communications
       - ./config:/client/config
       - ./logger:/client/logger
+      - ./last_hash/client:/last_hash
     environment:
       - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
@@ -25,6 +26,8 @@ services:
       - ENTRY_PLAYER_RATING_INDEX=2
       - ENTRY_PLAYER_WINNER_INDEX=6
       - ENTRY_PLAYER_CIV_INDEX=4
+      - MATCHES_FILE_NAME=matches_reduced.csv
+      - PLAYERS_FILE_NAME=match_players_reduced.csv
     networks:
       - age_of_empires_net
     depends_on:
@@ -298,6 +301,7 @@ services:
       - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
       - ./config:/join_matches_and_players/config
       - ./logger:/join_matches_and_players/logger
+      - ../age_of_empires_servers_data/join_reducer_1v1:/data
     entrypoint: python3 /join_matches_and_players/reducer.py
     environment:
       - TZ=America/Argentina/Buenos_Aires
@@ -317,6 +321,7 @@ services:
       - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
       - ./config:/join_matches_and_players/config
       - ./logger:/join_matches_and_players/logger
+      # - ../age_of_empires_servers_data/join_reducer_team:/data
     entrypoint: python3 /join_matches_and_players/reducer.py
     environment:
       - TZ=America/Argentina/Buenos_Aires

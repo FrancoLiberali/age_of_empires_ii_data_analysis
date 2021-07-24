@@ -2,7 +2,7 @@
 import csv
 import threading
 
-from config.envvars import CHUCKSIZE_IN_LINES_KEY, ENTRY_MATCH_AVERAGE_RATING_INDEX_KEY, ENTRY_MATCH_DURATION_INDEX_KEY, ENTRY_MATCH_LADDER_INDEX_KEY, ENTRY_MATCH_MAP_INDEX_KEY, ENTRY_MATCH_MIRROR_INDEX_KEY, ENTRY_MATCH_SERVER_INDEX_KEY, ENTRY_MATCH_TOKEN_INDEX_KEY, ENTRY_PLAYER_CIV_INDEX_KEY, ENTRY_PLAYER_MATCH_INDEX_KEY, ENTRY_PLAYER_RATING_INDEX_KEY, ENTRY_PLAYER_TOKEN_INDEX_KEY, ENTRY_PLAYER_WINNER_INDEX_KEY, get_config_param, get_config_params
+from config.envvars import CHUCKSIZE_IN_LINES_KEY, ENTRY_MATCH_AVERAGE_RATING_INDEX_KEY, ENTRY_MATCH_DURATION_INDEX_KEY, ENTRY_MATCH_LADDER_INDEX_KEY, ENTRY_MATCH_MAP_INDEX_KEY, ENTRY_MATCH_MIRROR_INDEX_KEY, ENTRY_MATCH_SERVER_INDEX_KEY, ENTRY_MATCH_TOKEN_INDEX_KEY, ENTRY_PLAYER_CIV_INDEX_KEY, ENTRY_PLAYER_MATCH_INDEX_KEY, ENTRY_PLAYER_RATING_INDEX_KEY, ENTRY_PLAYER_TOKEN_INDEX_KEY, ENTRY_PLAYER_WINNER_INDEX_KEY, MATCHES_FILE_NAME_KEY, PLAYERS_FILE_NAME_KEY, get_config_param, get_config_params
 from communications.constants import MATCHES_FANOUT_EXCHANGE_NAME, \
     PLAYERS_FANOUT_EXCHANGE_NAME, \
     LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
@@ -11,9 +11,6 @@ from communications.constants import MATCHES_FANOUT_EXCHANGE_NAME, \
     WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
 from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, ExchangeInterface, RabbitMQConnection, split_rows_into_list
 from logger.logger import Logger
-
-MATCHES_CSV_FILE = '/matches.csv'
-MATCH_PLAYERS_CSV_FILE = '/match_players.csv'
 
 logger = Logger(True)
 CHUCKSIZE_IN_LINES = get_config_param(CHUCKSIZE_IN_LINES_KEY, logger)
@@ -111,7 +108,7 @@ def send_matches():
 
     logger.info("Starting to send matches to server")
     send_file_in_chunks(exchange,
-                        MATCHES_CSV_FILE,
+                        get_config_param(MATCHES_FILE_NAME_KEY, logger),
                         get_line_string_for_matches)
     logger.info("Finished sending matches to server")
     connection.close()
@@ -137,7 +134,7 @@ def send_players():
 
     logger.info("Starting to send players to server")
     send_file_in_chunks(exchange,
-                        MATCH_PLAYERS_CSV_FILE,
+                        get_config_param(PLAYERS_FILE_NAME_KEY, logger),
                         get_line_string_for_players)
     logger.info("Finished sending players to server")
     connection.close()

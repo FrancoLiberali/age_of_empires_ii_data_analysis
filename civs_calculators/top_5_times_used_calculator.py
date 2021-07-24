@@ -52,13 +52,13 @@ def main():
         reverse=True
     )
     if len(sorted_list) > TOP_LEN:
-        top_5 = list(map(
-            lambda civ_and_times:
-                (civ_and_times[CIV_INDEX], str(civ_and_times[TIMES_INDEX])),
-            sorted_list[0:TOP_LEN]
-        ))
-    else:
-        top_5 = list(map(lambda civ, times: (civ, str(times)), sorted_list))
+        sorted_list = sorted_list[0:TOP_LEN]
+    top_5 = list(
+        map(
+            lambda civ_and_times: (civ_and_times[CIV_INDEX], str(civ_and_times[TIMES_INDEX])),
+            sorted_list
+        )
+    )
 
     output_queue.send_list_of_columns(top_5)
     connection.close()
