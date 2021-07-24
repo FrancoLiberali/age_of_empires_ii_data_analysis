@@ -1,6 +1,6 @@
+from logging import log
+from communications.file import dump_dict_into_json, file_open_or_create, write_at_beginning
 from hashlib import md5
-import json
-import os
 import pika
 
 from logger.logger import Logger
@@ -95,21 +95,13 @@ class QueueInterface(RabbitMQInterface):
         RabbitMQInterface.__init__(self, rabbit_MQ_connection, name)
         self.last_hash_strategy = last_hash_strategy
         if self.last_hash_strategy != LastHashStrategy.NO_LAST_HASH_SAVING:
-            os.makedirs(os.path.dirname(LAST_HASH_DIR_PATH), exist_ok=True)
-            last_hash_file_path = LAST_HASH_DIR_PATH + name + ".txt"
-            try:
-                self.last_hash_file = open(last_hash_file_path, "r+")
-                if self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
-                    self.last_hash = self.last_hash_file.readline()
-                else:
-                    self.last_hash = json.load(self.last_hash_file)
-            except FileNotFoundError:
-                logger.debug(f"{self.name} - Last hash file not found, creating.")
-                self.last_hash_file = open(last_hash_file_path, "w+")
-                if self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
-                    self.last_hash = ''
-                else:
-                    self.last_hash = {}
+            # TODO nunca se hace el close
+            is_json = (self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_ROUTING_KEY or self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_REDUCER_ID)
+            self.last_hash_file, self.last_hash = file_open_or_create(
+                LAST_HASH_DIR_PATH,
+                name + ".txt",
+                is_json
+            )
 
             logger.debug(
                     f"{self.name} - Initial last hash: {self.last_hash}")
@@ -187,12 +179,10 @@ class QueueInterface(RabbitMQInterface):
     def _store_actual_hash(self, actual_hash, entry):
         if self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
             self.last_hash = actual_hash
-            self.last_hash_file.seek(0)
-            self.last_hash_file.write(self.last_hash)
+            write_at_beginning(self.last_hash_file, self.last_hash)
         elif self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_REDUCER_ID or self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_ROUTING_KEY:
             self.last_hash[entry] = actual_hash
-            self.last_hash_file.seek(0)
-            json.dump(self.last_hash, self.last_hash_file)
+            dump_dict_into_json(self.last_hash_file, self.last_hash)
 
     def stop_consuming(self):
         self.channel.stop_consuming()
