@@ -109,7 +109,7 @@ services:
       - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_MATCH}
-      - PLAYERS_CHUNK_SIZE=100
+      - ROWS_CHUNK_SIZE=100
       - REDUCERS_QUEUE_PREFIX=group_by_match_reducer_
     networks:
       - age_of_empires_net
@@ -175,7 +175,7 @@ services:
       - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_CIV_1V1}
-      - PLAYERS_CHUNK_SIZE=100
+      - ROWS_CHUNK_SIZE=100
       - PLAYERS_INPUT_QUEUE_NAME=1v1_join_reducers_to_group_by_civ_master_queue
       - OUTPUT_EXCHANGE_NAME=1v1_group_by_civ_master_to_reducers_exchange
       - BARRIER_QUEUE_NAME=1v1_group_by_civ_reducers_barrier
@@ -197,7 +197,7 @@ services:
       - TZ=America/Argentina/Buenos_Aires
       - RABBITMQ_HOST=rabbitmq
       - REDUCERS_AMOUNT=${REDUCERS_AMOUNT_GROUP_BY_CIV_TEAM}
-      - PLAYERS_CHUNK_SIZE=100
+      - ROWS_CHUNK_SIZE=100
       - PLAYERS_INPUT_QUEUE_NAME=team_join_reducers_to_group_by_civ_master_queue
       - OUTPUT_EXCHANGE_NAME=team_group_by_civ_master_to_reducers_exchange
       - BARRIER_QUEUE_NAME=team_group_by_civ_reducers_barrier
