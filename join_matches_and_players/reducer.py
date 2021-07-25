@@ -2,7 +2,7 @@ import os
 import shutil
 from more_itertools import first_true
 
-from communications.file import ListFile, ListOfJsonFile
+from communications.file import BooleanFile, ListFile, ListOfJsonFile
 from communications.rabbitmq_interface import SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR, split_columns_into_list, split_rows_into_list
 from config.envvars import BARRIER_QUEUE_NAME_KEY, OUTPUT_QUEUE_NAME_KEY, REDUCER_ID_KEY, get_config_param
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
@@ -21,7 +21,7 @@ MATCH_PRESENT = 1
 HEADER_LINE = f"{get_config_param(REDUCER_ID_KEY, logger)}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}"
 
 
-def find_received_players_by_matches(players_rows, players_by_match, matches, more_matches_can_come):
+def find_received_players_by_matches(players_rows, players_by_match, matches, no_more_matches):
     players_to_send = []
     players_to_add = {}
     for player_string in players_rows:
@@ -29,7 +29,7 @@ def find_received_players_by_matches(players_rows, players_by_match, matches, mo
         match_id = player_columns[FROM_CLIENT_PLAYER_MATCH_INDEX]
         match_is_present = matches.get(match_id, None) is not None
         # match no represent in matches
-        if not match_is_present and more_matches_can_come:
+        if not match_is_present and not no_more_matches:
             # store players and wait that match to arrive
             players_of_match = players_by_match.get(match_id, [])
             player_already_exists = first_true(
@@ -83,13 +83,18 @@ def add_players_received(players_to_add):
         players_file.write(players)
         players_file.close()
 
+NO_MORE_MATCHES_FILE_NAME = "no_more_matches.txt"
+
 def get_filter_players_in_matches_function(matches_file, players_by_match, matches, output_queue):
-    more_matches_can_come = [True]
+    no_more_matches_file = BooleanFile(
+        STATE_STORAGE_DIR, NO_MORE_MATCHES_FILE_NAME)
+    no_more_matches = [no_more_matches_file.content]
     # python function currying
     def filter_players_in_matches(queue, received_string, _):
         if received_string == MATCHES_SENTINEL:
             logger.info("No more matches are comming, stoping saving players until it match come")
-            more_matches_can_come[0] = False
+            no_more_matches[0] = True
+            no_more_matches_file.write(True)
             # TODO guardar esta variable en el estado persistente
             # delete all players stored, its match will never come
             shutil.rmtree(PLAYERS_STORAGE_DIR, ignore_errors=True)
@@ -99,7 +104,7 @@ def get_filter_players_in_matches_function(matches_file, players_by_match, match
                 JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX)
             if identificator == JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR:
                 players_to_send, players_to_add = find_received_players_by_matches(
-                    chunk_rows, players_by_match, matches, more_matches_can_come[0])
+                    chunk_rows, players_by_match, matches, no_more_matches[0])
                 output_queue.send_list_of_columns(
                     players_to_send,
                     header_line=HEADER_LINE

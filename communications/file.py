@@ -43,6 +43,27 @@ class OneLineFile(File):
         self.file.seek(0)
         self.file.write(text)
 
+class BooleanFile(File):
+    TRUE_REPRESENTATION = "1"
+    FALSE_REPRESENTATION = "0"
+
+    def _load_data(self):
+        line = self.file.readline()
+        if line == BooleanFile.TRUE_REPRESENTATION:
+            return True
+        else:
+            return False
+
+    def _generate_data(self):
+        return False
+
+    def write(self, boolean):
+        self.file.seek(0)
+        if boolean == True:
+            self.file.write(BooleanFile.TRUE_REPRESENTATION)
+        else:
+            self.file.write(BooleanFile.FALSE_REPRESENTATION)
+
 
 class JsonFile(File):
     def _load_data(self):
