@@ -31,7 +31,8 @@ def add_to_dict_by_key(output_exchange,
         rows_list.append(row_string)
         dict_by_key[key] = rows_list
 
-    send_dict_by_key(output_exchange, dict_by_key, tag_to_send=tag_to_send)
+    # TODO sacar el check_chunk_size=False para volver a poner la optimizacion de chunks si queda tiempo
+    send_dict_by_key(output_exchange, dict_by_key, tag_to_send=tag_to_send, check_chunk_size=False)
 
 
 def get_receive_sentinel_function(sentinel_received_amount, sentinels_objetive):
