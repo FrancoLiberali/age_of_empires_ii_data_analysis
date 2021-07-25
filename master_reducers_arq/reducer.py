@@ -3,11 +3,18 @@ from communications.rabbitmq_interface import QueueInterface, RabbitMQConnection
 from logger.logger import Logger
 
 
+def get_send_sentinel_to_master_function(logger, barrier_queue):
+    def on_sentinel_callback(_, __):
+        logger.info("Sending sentinel to master to notify finished")
+        barrier_queue.send_string(
+            f"{get_config_param(REDUCER_ID_KEY, logger)}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}{SENTINEL_MESSAGE}"
+        )
+    return on_sentinel_callback
+
 def main_reducer(
         barrier_queue_name,
         output_queue_name,
-        receive_and_reduce_function,
-        send_result_to_next_stage_function=None
+        receive_and_reduce_function
     ):
     logger = Logger()
     connection = RabbitMQConnection()
@@ -19,12 +26,9 @@ def main_reducer(
     )
     output_queue = QueueInterface(connection, output_queue_name)
 
-    result = receive_and_reduce_function(input_queue, output_queue)
-    if send_result_to_next_stage_function is not None:
-        send_result_to_next_stage_function(output_queue, result)
-
-    logger.info("Sending sentinel to master to notify finished")
-    barrier_queue.send_string(
-        f"{get_config_param(REDUCER_ID_KEY, logger)}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}{SENTINEL_MESSAGE}"
+    receive_and_reduce_function(
+        input_queue,
+        output_queue,
+        get_send_sentinel_to_master_function(logger, barrier_queue)
     )
     connection.close()

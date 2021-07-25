@@ -3,7 +3,7 @@ import shutil
 from more_itertools import first_true
 
 from communications.file import BooleanFile, ListFile, ListOfJsonFile
-from communications.rabbitmq_interface import SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR, split_columns_into_list, split_rows_into_list
+from communications.rabbitmq_interface import SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR, get_on_sentinel_send_sentinel_callback_function, split_columns_into_list, split_rows_into_list
 from config.envvars import BARRIER_QUEUE_NAME_KEY, OUTPUT_QUEUE_NAME_KEY, REDUCER_ID_KEY, get_config_param
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
@@ -120,11 +120,19 @@ def get_filter_players_in_matches_function(matches_file, players_by_match, match
                 add_matches_received(matches_file, matches_to_add)
     return filter_players_in_matches
 
+
+def get_on_sentinel_callback_function(send_sentinel_to_master_function):
+    def on_sentinel_callback(_, __):
+        shutil.rmtree(STATE_STORAGE_DIR, ignore_errors=True)
+        send_sentinel_to_master_function(_, __)
+    return on_sentinel_callback
+
 STATE_STORAGE_DIR = "/data/"
 PLAYERS_STORAGE_DIR = STATE_STORAGE_DIR + "players/"
 MATCHES_FILE_NAME = "matches.txt"
 
-def join_players_and_matches(input_queue, output_queue):
+
+def join_players_and_matches(input_queue, output_queue, send_sentinel_to_master_function):
     players_by_match = {}
 
     matches_file = ListFile(
@@ -145,6 +153,9 @@ def join_players_and_matches(input_queue, output_queue):
     input_queue.consume(
         get_filter_players_in_matches_function(
             matches_file, players_by_match, matches, output_queue
+        ),
+        on_sentinel_callback=get_on_sentinel_callback_function(
+            send_sentinel_to_master_function
         )
     )
 
@@ -152,12 +163,11 @@ def join_players_and_matches(input_queue, output_queue):
     matches_file.close()
     return players_by_match
 
-
 def main():
     main_reducer(
         get_config_param(BARRIER_QUEUE_NAME_KEY, logger),
         get_config_param(OUTPUT_QUEUE_NAME_KEY, logger),
-        join_players_and_matches
+        join_players_and_matches,
     )
 
 
