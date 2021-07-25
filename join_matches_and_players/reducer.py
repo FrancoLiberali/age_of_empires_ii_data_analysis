@@ -1,17 +1,15 @@
 import os
 import shutil
-from more_itertools import first_true
 
 from communications.file import BooleanFile, ListFile, ListOfJsonFile
-from communications.rabbitmq_interface import SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR, get_on_sentinel_send_sentinel_callback_function, split_columns_into_list, split_rows_into_list
+from communications.rabbitmq_interface import SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR, split_columns_into_list, split_rows_into_list
 from config.envvars import BARRIER_QUEUE_NAME_KEY, OUTPUT_QUEUE_NAME_KEY, REDUCER_ID_KEY, get_config_param
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
-    FROM_CLIENT_PLAYER_TOKEN_INDEX, \
     JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX, \
     JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, \
     JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, MATCHES_SENTINEL
-from master_reducers_arq.reducer import main_reducer
+from master_reducers_arq.reducer import main_reducer, player_already_exists_in_list
 from logger.logger import Logger
 
 logger = Logger()
@@ -32,10 +30,8 @@ def find_received_players_by_matches(players_rows, players_by_match, matches, no
         if not match_is_present and not no_more_matches:
             # store players and wait that match to arrive
             players_of_match = players_by_match.get(match_id, [])
-            player_already_exists = first_true(
-                players_of_match,
-                pred=lambda player: player[FROM_CLIENT_PLAYER_TOKEN_INDEX] == player_columns[FROM_CLIENT_PLAYER_TOKEN_INDEX]
-            ) is not None
+            player_already_exists = player_already_exists_in_list(
+                player_columns, players_of_match)
             if not player_already_exists:
                 players_to_add_of_match = players_to_add.get(match_id, [])
                 players_to_add_of_match.append(player_columns)
