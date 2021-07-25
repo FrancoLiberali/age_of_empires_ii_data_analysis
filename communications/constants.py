@@ -17,6 +17,7 @@ TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME = 'top_5_used_calculator_to_client_qu
 SENTINEL_KEY = "sentinel"
 PLAYERS_KEY = "" # no key because it comes directly from PLAYERS_FANOUT_EXCHANGE_NAME
 MATCHES_KEY = "matches"
+MATCHES_SENTINEL = "matches_sentinel"
 
 JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX = 0
 JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR = "players"

@@ -43,7 +43,7 @@ def get_receive_matches_ids_function(matches_ids, skip_header):
 
 def get_print_matches_ids_function(matches_ids, message):
     # function currying in python
-    def print_matches_ids(_):
+    def print_matches_ids(_, __):
         logger.info(message)
         logger.info('\n'.join(matches_ids))
     return print_matches_ids

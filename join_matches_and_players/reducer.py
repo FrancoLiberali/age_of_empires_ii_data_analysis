@@ -1,4 +1,5 @@
 import os
+import shutil
 from more_itertools import first_true
 
 from communications.file import ListFile, ListOfJsonFile
@@ -9,7 +10,7 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     FROM_CLIENT_PLAYER_TOKEN_INDEX, \
     JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX, \
     JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, \
-    JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR
+    JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, MATCHES_SENTINEL
 from master_reducers_arq.reducer import main_reducer
 from logger.logger import Logger
 
@@ -19,14 +20,16 @@ MATCH_PRESENT = 1
 
 HEADER_LINE = f"{get_config_param(REDUCER_ID_KEY, logger)}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}"
 
-def find_received_players_by_matches(output_queue, players_rows, players_by_match, matches):
+
+def find_received_players_by_matches(players_rows, players_by_match, matches, more_matches_can_come):
     players_to_send = []
     players_to_add = {}
     for player_string in players_rows:
         player_columns = split_columns_into_list(player_string)
         match_id = player_columns[FROM_CLIENT_PLAYER_MATCH_INDEX]
+        match_is_present = matches.get(match_id, None) is not None
         # match no represent in matches
-        if matches.get(match_id, None) is None:
+        if not match_is_present and more_matches_can_come:
             # store players and wait that match to arrive
             players_of_match = players_by_match.get(match_id, [])
             player_already_exists = first_true(
@@ -42,12 +45,12 @@ def find_received_players_by_matches(output_queue, players_rows, players_by_matc
                 players_by_match[match_id] = players_of_match
             else:
                 logger.debug(f"Duplicated player found, players_of_match: {players_of_match}, player_columns: {player_columns}")
-        else:
+        elif match_is_present:
             players_to_send.append(player_columns)
     return players_to_send, players_to_add
 
 
-def find_players_by_received_matches(output_queue, matches_rows, players_by_match, matches):
+def find_players_by_received_matches(matches_rows, players_by_match, matches):
     players_to_send = []
     matches_to_add = []
     for match_string in matches_rows:
@@ -63,51 +66,53 @@ def find_players_by_received_matches(output_queue, matches_rows, players_by_matc
                 players_to_send += players_of_that_match
     return players_to_send, matches_to_add
 
-PLAYERS_LIST_FILE_NAME = "players_list.txt"
-
-def get_players_list_dir(match_id):
-    return PLAYERS_STORAGE_DIR + match_id + "/"
-
 def add_matches_received(matches_file, new_matches_ids):
     matches_file.write(new_matches_ids)
     for match_id in new_matches_ids:
-        player_of_match_dir = get_players_list_dir(match_id)
-        # create dir to store players of that match
-        os.makedirs(os.path.dirname(player_of_match_dir), exist_ok=True)
-        # open file in w mode
-        # if the file doesnt exist create it (no players for this match arrived yet)
-        # if the file exists clear it (players already arrived but cleared to send to next stage)
-        open(player_of_match_dir + PLAYERS_LIST_FILE_NAME, "w").close()
+        try:
+            os.remove(PLAYERS_STORAGE_DIR + match_id)
+        except FileNotFoundError:
+            pass
 
 
 def add_players_received(players_to_add):
     for match_id, players in players_to_add.items():
-        player_of_match_dir = get_players_list_dir(match_id)
         players_file = ListOfJsonFile(
-            player_of_match_dir, PLAYERS_LIST_FILE_NAME, read_content=False
+            PLAYERS_STORAGE_DIR, match_id, read_content=False
         )
         players_file.write(players)
         players_file.close()
 
 def get_filter_players_in_matches_function(matches_file, players_by_match, matches, output_queue):
+    more_matches_can_come = [True]
     # python function currying
     def filter_players_in_matches(queue, received_string, _):
-        chunk_rows = split_rows_into_list(received_string)
-        identificator = chunk_rows.pop(
-            JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX)
-        if identificator == JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR:
-            players_to_send, players_to_add = find_received_players_by_matches(
-                output_queue, chunk_rows, players_by_match, matches)
-            add_players_received(players_to_add)
-        elif identificator == JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR:
-            players_to_send, matches_to_add = find_players_by_received_matches(
-                output_queue, chunk_rows, players_by_match, matches)
-            add_matches_received(matches_file, matches_to_add)
-
-        output_queue.send_list_of_columns(
-            players_to_send,
-            header_line=HEADER_LINE
-        )
+        if received_string == MATCHES_SENTINEL:
+            logger.info("No more matches are comming, stoping saving players until it match come")
+            more_matches_can_come[0] = False
+            # TODO guardar esta variable en el estado persistente
+            # delete all players stored, its match will never come
+            shutil.rmtree(PLAYERS_STORAGE_DIR, ignore_errors=True)
+        else:
+            chunk_rows = split_rows_into_list(received_string)
+            identificator = chunk_rows.pop(
+                JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX)
+            if identificator == JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR:
+                players_to_send, players_to_add = find_received_players_by_matches(
+                    chunk_rows, players_by_match, matches, more_matches_can_come[0])
+                output_queue.send_list_of_columns(
+                    players_to_send,
+                    header_line=HEADER_LINE
+                )
+                add_players_received(players_to_add)
+            elif identificator == JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR:
+                players_to_send, matches_to_add = find_players_by_received_matches(
+                    chunk_rows, players_by_match, matches)
+                output_queue.send_list_of_columns(
+                    players_to_send,
+                    header_line=HEADER_LINE
+                )
+                add_matches_received(matches_file, matches_to_add)
     return filter_players_in_matches
 
 STATE_STORAGE_DIR = "/data/"
@@ -124,9 +129,8 @@ def join_players_and_matches(input_queue, output_queue):
     matches = {}
     for match_id in matches_file.content:
         matches[match_id] = MATCH_PRESENT
-        player_of_match_dir = get_players_list_dir(match_id)
         players_file = ListOfJsonFile(
-            player_of_match_dir, PLAYERS_LIST_FILE_NAME
+            PLAYERS_STORAGE_DIR, match_id
         )
         players_by_match[match_id] = players_file.content
         players_file.close()
