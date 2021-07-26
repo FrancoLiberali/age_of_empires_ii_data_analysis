@@ -22,32 +22,38 @@ class Supervisor:
         self.leader_queue = multiprocessing.Queue()
         
 
+    def wait_for_leader(self):
+        while self.leader == None:            
+            self.leader = self.leader_queue.get()
+            if self.leader != None:
+                logger.info(f"New leader elected: {self.leader}")
+            else:
+                logger.debug("Leader = {}".format(self.leader))
+    
     def start_election(self):
-        logger.info(f"Starting election")
+        logger.info(f"Starting election...")
         if ring.client.start_election(self.id, self.supervisors):
             self.leader = None
-            while self.leader == None:
-                self.leader = self.leader_queue.get()
-                if self.leader != None:
-                    logger.info(f"New leader elected: {self.leader}")
+            self.wait_for_leader()
         else:
             self.leader = self.id
 
     def start_node(self, node):
         result = subprocess.run(['docker', 'start', node], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        logger.info('Starting {}. Result={}. Output={}. Error={}'.format(node, result.returncode, result.stdout, result.stderr))
+        logger.info('Starting {}...'.format(node))
+        logger.debug('Starting {}. Result={}. Output={}. Error={}'.format(node, result.returncode, result.stdout, result.stderr))
 
     def do_leader_tasks(self):
-        logger.info("Doing leader tasks")
-        logger.info("Checking if all nodes are alive...")
+        logger.debug("Doing leader tasks")
+        logger.debug("Checking if all nodes are alive...")
         for node in self.nodes:
             if not healthcheck.client.ping(node):
                 logger.info("{} is down. Starting it...".format(node))
                 self.start_node(node)
 
     def do_non_leader_tasks(self):
-        logger.info("Doing non leader tasks")
-        logger.info("Checking if leader supervisor is alive...")
+        logger.debug("Doing non leader tasks")
+        logger.debug("Checking if leader supervisor is alive...")
         if not healthcheck.client.ping(self.leader):
             logger.info("Leader supervisor {} not responding".format(self.leader))
             self.leader = None
@@ -56,11 +62,9 @@ class Supervisor:
     def check_if_leader_changed(self):
         try:
             self.leader = self.leader_queue.get(block=False)
-            while self.leader == None:
-                self.leader = self.leader_queue.get()
-            logger.info(f"New leader: {self.leader}")
+            self.wait_for_leader()
         except queue.Empty:
-            pass
+            logger.debug("Leader did not change")
 
     def run(self):
         ping_server = multiprocessing.Process(target=healthcheck.server.run)        

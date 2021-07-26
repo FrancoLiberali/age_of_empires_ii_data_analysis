@@ -35,10 +35,10 @@ class RingElectionServer:
     def handle_election_request(self, request):
         # the election went all the way round and the host continues being the leader -> declare leader
         if request['leader'] == self.hostname and self.leader != self.hostname:
-            logger.info(f"COORDINATOR self.leader: {self.leader} request['leader']: {request['leader']}")
-            ring.client.send_coordinator_message(self.hostname, self.hostname,self.nodes)
+            logger.debug(f"COORDINATOR self.leader: {self.leader} request['leader']: {request['leader']}")
+            ring.client.send_coordinator_message(self.hostname, self.hostname, self.nodes)
             self.declare_as_leader()
-            logger.info(f"COORDINATOR self.leader: {self.leader} self.hostname: {self.hostname}")
+            logger.debug(f"COORDINATOR self.leader: {self.leader} self.hostname: {self.hostname}")
             return
         # incoming voted leader is greater than host -> forward incoming leader
         if (request['leader'] > self.hostname):
@@ -55,7 +55,7 @@ class RingElectionServer:
             else:
                 self.declare_as_leader()
         else:
-            logger.info(f"Discarded election sent by {request['sender']} proposing {request['leader']}")
+            logger.debug(f"Discarded election sent by {request['sender']} proposing {request['leader']}")
 
     def handle_coordinator_request(self, request):
         if request['leader'] != self.hostname:

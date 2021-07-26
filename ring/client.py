@@ -15,10 +15,10 @@ def send_neighbour(host_id, nodes, message):
             sock.connect((neighbour_node, PORT))
             msg = json.dumps(message)
             sock.sendall(struct.pack('!i'+ str(len(msg)) +'s', len(msg), msg.encode('utf-8')))
-            logger.info(f"{message['type']} message sent to {neighbour_node} with {message['leader']} as proposed leader")
+            logger.debug(f"{message['type']} message sent to {neighbour_node} with {message['leader']} as proposed leader")
             return True
         except socket.error as err:
-            logger.info(f"Socket Error: {err.strerror} connecting to {neighbour_node}")
+            logger.debug(f"Connection error with {neighbour_node}: {err.strerror}.")
             neighbour_node_pos += 1
                        
     return False
