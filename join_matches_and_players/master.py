@@ -6,55 +6,34 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     MATCHES_KEY, MATCHES_SENTINEL, \
     PLAYERS_KEY, SENTINEL_KEY
 from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, split_columns_into_list, split_rows_into_list
-from master_reducers_arq.master import main_master
+from master_reducers_arq.master import STATE_RECEIVING_SENTINELS, add_to_dict_by_key, main_master, send_dict_by_key, send_sentinel_to_reducers
 from logger.logger import Logger
 
 logger = Logger()
-ROWS_CHUNK_SIZE = get_config_param(ROWS_CHUNK_SIZE_KEY, logger)
-
-def send_dict_by_key(output_exchange, dict_by_key, tag_to_send, check_chunk_size=True):
-    for key, rows in list(dict_by_key.items()):
-        if len(rows) > ROWS_CHUNK_SIZE or (len(rows) > 0 and not check_chunk_size):
-            output_exchange.send_list_as_rows([tag_to_send] + rows, key)
-            dict_by_key.pop(key)
-            del rows
-
-
-def add_to_dict_by_key(output_exchange,
-                       partition_function,
-                       dict_by_key,
-                       received_rows,
-                       match_id_index,
-                       tag_to_send):
-    for row_string in received_rows:
-        key = partition_function.get_key(
-            split_columns_into_list(row_string)[match_id_index]
-        )
-        rows_list = dict_by_key.get(key, [])
-        rows_list.append(row_string)
-        dict_by_key[key] = rows_list
-
-    send_dict_by_key(output_exchange, dict_by_key, tag_to_send)
-
 INPUTS_AMOUNT = 2
 
-def get_on_sentinel_callback_function(output_exchange, players_by_key, matches_by_key, sentinels_count):
+
+def get_on_sentinel_callback_function(output_exchange, players_by_key, matches_by_key, sentinels_count, state_file):
     def on_sentinel_callback(_, routing_key):
         sentinels_count[0] += 1
         logger.info(
             f"Sentinel message: {sentinels_count[0]}/{INPUTS_AMOUNT} received")
         if routing_key == MATCHES_KEY:
+            # TODO descomentar esto para volver a poner la optimizacion de chunks si queda tiempo. Requiere reanalizar estados
             # send the remaining matches
-            send_dict_by_key(output_exchange, matches_by_key,
-                             JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, False)
+            # send_dict_by_key(output_exchange, matches_by_key,
+                            #  JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, check_chunk_size=False)
             output_exchange.send_string(MATCHES_SENTINEL, SENTINEL_KEY)
         if sentinels_count[0] == INPUTS_AMOUNT:
             logger.info("Stoping receive and dispach it to reducers.")
+            # TODO descomentar esto para volver a poner la optimizacion de chunks si queda tiempo. Requiere reanalizar estados
             # send the remaining players and matches
-            send_dict_by_key(output_exchange, players_by_key,
-                             JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, False)
-            send_dict_by_key(output_exchange, matches_by_key,
-                             JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, False)
+            # send_dict_by_key(output_exchange, players_by_key,
+                            #  JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, check_chunk_size=False)
+            # send_dict_by_key(output_exchange, matches_by_key,
+                            #  JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, check_chunk_size=False)
+            send_sentinel_to_reducers(output_exchange)
+            state_file.write(STATE_RECEIVING_SENTINELS)
             return QueueInterface.STOP_CONSUMING
         return QueueInterface.NO_STOP_CONSUMING
     return on_sentinel_callback
@@ -83,7 +62,7 @@ def get_dispach_to_reducers_function(output_exchange, players_by_key, matches_by
     return dispach_to_reducers
 
 
-def receive_and_dispach_players_and_matches(entry_queue, output_exchange, partition_function):
+def receive_and_dispach_players_and_matches(entry_queue, output_exchange, partition_function, state_file):
     players_by_key = {}
     matches_by_key = {}
     sentinels_count = [0]
@@ -99,7 +78,8 @@ def receive_and_dispach_players_and_matches(entry_queue, output_exchange, partit
             output_exchange,
             players_by_key,
             matches_by_key,
-            sentinels_count
+            sentinels_count,
+            state_file
         )
     )
 
