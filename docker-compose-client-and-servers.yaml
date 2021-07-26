@@ -244,6 +244,7 @@ services:
       - ./master_reducers_arq:/age_of_empires_ii_da/master_reducers_arq
       - ./config:/age_of_empires_ii_da/config
       - ./logger:/age_of_empires_ii_da/logger
+      - ../age_of_empires_servers_data/group_by_match_reducer_${REDUCER_ID}:/data
     entrypoint: python3 /age_of_empires_ii_da/reducer.py
     environment:
       - TZ=America/Argentina/Buenos_Aires

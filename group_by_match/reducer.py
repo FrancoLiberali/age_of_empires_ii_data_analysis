@@ -75,7 +75,7 @@ def process_player_by_match(input_queue, output_queue, send_sentinel_to_master_f
     )
     for player_columns in players_list_file.content:
         if player_columns[NOT_POSSIBLE_INDEX] == NOT_POSSIBLE:
-            players_of_match[player_columns[MATCH_ID_INDEX]] = NOT_POSSIBLE
+            players_by_match[player_columns[MATCH_ID_INDEX]] = NOT_POSSIBLE
         else:
             match_id = player_columns[FROM_CLIENT_PLAYER_MATCH_INDEX]
             players_of_match = players_by_match.get(

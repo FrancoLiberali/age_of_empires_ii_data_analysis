@@ -87,9 +87,11 @@ class ListFile(File):
         return []
 
     def write(self, list):
-        list_string = ListFile.LIST_SEPARATOR.join(list)
-        self.file.seek(0, io.SEEK_END)
-        self.file.write(f"{list_string}{ListFile.LIST_SEPARATOR}")
+        if len(list) > 0:
+            list_string = ListFile.LIST_SEPARATOR.join(list)
+            self.file.seek(0, io.SEEK_END)
+            self.file.write(list_string)
+            self.file.write(ListFile.LIST_SEPARATOR)
 
 
 class ListOfJsonFile(ListFile):
@@ -99,5 +101,5 @@ class ListOfJsonFile(ListFile):
 
     def write(self, list_of_list):
         super().write(
-            [json.dumps(list) for list in list_of_list]
+            [json.dumps(list, ensure_ascii=True) for list in list_of_list]
         )
