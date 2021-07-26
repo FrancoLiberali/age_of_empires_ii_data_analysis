@@ -1,6 +1,6 @@
 from config.envvars import INPUT_QUEUE_NAME_KEY, get_config_param
 from communications.constants import TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME
-from communications.rabbitmq_interface import QueueInterface, RabbitMQConnection, split_columns_into_list, split_rows_into_list
+from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, RabbitMQConnection, split_columns_into_list, split_rows_into_list
 from logger.logger import Logger
 
 FROM_GROUP_BY_CIV_CIV_INDEX = 0
@@ -9,7 +9,7 @@ FROM_GROUP_BY_CIV_TIMES_INDEX = 1
 
 def get_group_times_used_by_civ_function(times_used_by_civ):
     def group_wins_and_defeats_by_civ(queue, received_string, _):
-        for civ_and_times_used in split_rows_into_list(received_string):
+        for civ_and_times_used in split_rows_into_list(received_string, skip_header=True):
             columns = split_columns_into_list(civ_and_times_used)
             civ = columns[FROM_GROUP_BY_CIV_CIV_INDEX]
             times_used_of_civ = times_used_by_civ.get(
@@ -30,7 +30,8 @@ def main():
     connection = RabbitMQConnection()
     input_queue = QueueInterface(
         connection,
-        get_config_param(INPUT_QUEUE_NAME_KEY, logger)
+        get_config_param(INPUT_QUEUE_NAME_KEY, logger),
+        last_hash_strategy=LastHashStrategy.LAST_HASH_PER_REDUCER_ID
     )
     output_queue = QueueInterface(
         connection, TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME)

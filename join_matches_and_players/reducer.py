@@ -1,5 +1,5 @@
-from communications.rabbitmq_interface import split_columns_into_list, split_rows_into_list
-from config.envvars import BARRIER_QUEUE_NAME_KEY, OUTPUT_QUEUE_NAME_KEY, get_config_param
+from communications.rabbitmq_interface import SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR, split_columns_into_list, split_rows_into_list
+from config.envvars import BARRIER_QUEUE_NAME_KEY, OUTPUT_QUEUE_NAME_KEY, REDUCER_ID_KEY, get_config_param
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
     JOIN_TO_REDUCERS_IDENTIFICATOR_INDEX, \
@@ -11,6 +11,8 @@ from logger.logger import Logger
 logger = Logger()
 
 MATCH_PRESENT = 1
+
+HEADER_LINE = f"{get_config_param(REDUCER_ID_KEY, logger)}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}"
 
 def find_received_players_by_matches(output_queue, players_rows, players_by_match, matches):
     players_to_send = []
@@ -25,7 +27,10 @@ def find_received_players_by_matches(output_queue, players_rows, players_by_matc
             players_by_match[match_id] = players_of_match
         else:
             players_to_send.append(player_columns)
-    output_queue.send_list_of_columns(players_to_send)
+    output_queue.send_list_of_columns(
+        players_to_send,
+        header_line=HEADER_LINE
+    )
 
 
 def find_players_by_received_matches(output_queue, matches_rows, players_by_match, matches):
@@ -39,7 +44,10 @@ def find_players_by_received_matches(output_queue, matches_rows, players_by_matc
         # allready players for that match
         if players_of_that_match is not None:
             players_to_send += players_of_that_match
-    output_queue.send_list_of_columns(players_to_send)
+    output_queue.send_list_of_columns(
+        players_to_send,
+        header_line=HEADER_LINE
+    )
 
 
 def get_filter_players_in_matches_function(players_by_match, matches, output_queue):

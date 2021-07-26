@@ -1,5 +1,5 @@
 from config.envvars import PLAYERS_CHUNK_SIZE_KEY, get_config_param
-from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, \
+from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX, GROUP_BY_MATCH_MASTER_PLAYERS_INPUT_QUEUE_NAME, \
     GROUP_BY_MATCH_MASTER_TO_REDUCERS_EXCHANGE_NAME, \
     GROUP_BY_MATCH_REDUCERS_BARRIER_QUEUE_NAME, \
     PLAYERS_FANOUT_EXCHANGE_NAME, \
@@ -33,16 +33,14 @@ def add_to_players_by_key(output_exchange, partition_function, players_by_key, r
 
 
 def get_on_sentinel_callback_function(output_exchange, players_by_key):
-    def on_sentinel_callback():
+    def on_sentinel_callback(_):
         # send the remaining players
         send_players_by_key(output_exchange, players_by_key, False)
     return on_sentinel_callback
 
 def get_dispach_to_reducers_function(output_exchange, players_by_key, partition_function):
     def dispach_to_reducers(queue, received_string, _):
-        received_players = [
-            player_string for player_string in split_rows_into_list(received_string)
-        ]
+        received_players = split_rows_into_list(received_string)
         add_to_players_by_key(
             output_exchange,
             partition_function,
@@ -59,7 +57,7 @@ def receive_and_dispach_players(entry_queue, output_exchange, partition_function
         get_dispach_to_reducers_function(
             output_exchange, players_by_key, partition_function
         ),
-        get_on_sentinel_callback_function(
+        on_sentinel_callback=get_on_sentinel_callback_function(
             output_exchange, players_by_key
         )
     )
@@ -68,7 +66,9 @@ def receive_and_dispach_players(entry_queue, output_exchange, partition_function
 def subscribe_to_entries(connection):
     input_exchage = ExchangeInterface.newFanout(
         connection, PLAYERS_FANOUT_EXCHANGE_NAME)
-    input_queue = QueueInterface.newPrivate(connection)
+    # TODO guarda last hash solo para usarlo en el sentinel final, no hay posibles duplicados a la entrada
+    input_queue = QueueInterface(
+        connection, GROUP_BY_MATCH_MASTER_PLAYERS_INPUT_QUEUE_NAME)
     input_queue.bind(input_exchage)
 
     return input_queue

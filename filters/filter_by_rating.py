@@ -1,9 +1,9 @@
 from config.envvars import MIN_RATING_KEY, OUTPUT_EXCHANGE_NAME_KEY, get_config_param
-from communications.constants import FROM_CLIENT_PLAYER_CIV_INDEX, \
+from communications.constants import FILTER_BY_RATING_QUEUE_NAME, FROM_CLIENT_PLAYER_CIV_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
     FROM_CLIENT_PLAYER_RATING_INDEX, \
     PLAYERS_FANOUT_EXCHANGE_NAME
-from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, get_on_sentinel_send_sentinel_callback_function, split_columns_into_list, split_rows_into_list
+from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, RabbitMQConnection, get_on_sentinel_send_sentinel_callback_function, split_columns_into_list, split_rows_into_list
 from logger.logger import Logger
 
 logger = Logger()
@@ -35,7 +35,11 @@ def main():
     connection = RabbitMQConnection()
     input_exchage = ExchangeInterface.newFanout(
         connection, PLAYERS_FANOUT_EXCHANGE_NAME)
-    input_queue = QueueInterface.newPrivate(connection)
+    input_queue = QueueInterface(
+        connection,
+        FILTER_BY_RATING_QUEUE_NAME,
+        LastHashStrategy.NO_LAST_HASH_SAVING
+    )
     input_queue.bind(input_exchage)
 
     output_exchage = ExchangeInterface.newFanout(
@@ -47,7 +51,8 @@ def main():
         f'Starting to receive players to filter by rating > {MIN_RATING}')
     input_queue.consume(
         get_filter_by_rating_function(output_exchage),
-        get_on_sentinel_send_sentinel_callback_function(output_exchage)
+        on_sentinel_callback=get_on_sentinel_send_sentinel_callback_function(
+            output_exchage)
     )
 
     connection.close()

@@ -1,6 +1,6 @@
 from config.envvars import REDUCERS_AMOUNT_KEY, REDUCERS_QUEUE_PREFIX_KEY, get_config_param
 from communications.constants import SENTINEL_KEY
-from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection
+from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, SENTINEL_MESSAGE, SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR
 from logger.logger import Logger
 from master_reducers_arq.partition_function import PartitionFunction
 
@@ -9,10 +9,10 @@ logger = Logger()
 
 def get_receive_sentinel_function(sentinel_received_amount, sentinels_objetive):
     # python function currying
-    def receive_sentinel():
+    def receive_sentinel(reducer_id):
         sentinel_received_amount[0] += 1
         logger.info(
-            f"Sentinels from reducers received: {sentinel_received_amount[0]} / {sentinels_objetive}")
+            f"Recived sentinel from reducer {reducer_id}. Sentinels received: {sentinel_received_amount[0]} / {sentinels_objetive}")
         if sentinel_received_amount[0] == sentinels_objetive:
             return QueueInterface.STOP_CONSUMING
         return QueueInterface.NO_STOP_CONSUMING
@@ -23,7 +23,7 @@ def receive_a_sentinel_per_reducer(barrier_queue, reducers_amount):
     sentinel_received_amount = [0]  # using a list to pass by reference
     barrier_queue.consume(
         None,
-        get_receive_sentinel_function(
+        on_sentinel_callback=get_receive_sentinel_function(
             sentinel_received_amount,
             reducers_amount
         )
@@ -89,6 +89,15 @@ def main_master(
     receive_a_sentinel_per_reducer(barrier_queue, reducers_amount)
 
     logger.info("Sending sentinel to next stage to notify all data sended")
-    reducers_output_queue.send_sentinel()
+    send_sentinel_with_master_id_and_last_hash(
+        reducers_output_queue, entry_queue
+    )
 
     connection.close()
+
+MASTER_ID = "master"
+
+def send_sentinel_with_master_id_and_last_hash(reducers_output_queue, entry_queue):
+    reducers_output_queue.send_string(
+        f"{MASTER_ID}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}{entry_queue.last_hash}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}{SENTINEL_MESSAGE}"
+    )

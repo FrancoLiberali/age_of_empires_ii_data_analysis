@@ -1,6 +1,6 @@
 from config.envvars import BARRIER_QUEUE_NAME_KEY, OUTPUT_EXCHANGE_NAME_KEY, PLAYERS_CHUNK_SIZE_KEY, PLAYERS_INPUT_QUEUE_NAME_KEY, REDUCERS_OUTPUT_QUEUE_NAME_KEY, get_config_param
 from communications.constants import FROM_CLIENT_PLAYER_MATCH_INDEX
-from communications.rabbitmq_interface import QueueInterface, split_columns_into_list, split_rows_into_list
+from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, split_columns_into_list, split_rows_into_list
 from master_reducers_arq.master import main_master
 from logger.logger import Logger
 
@@ -28,7 +28,7 @@ def add_to_players_by_key(output_exchange, partition_function, players_by_key, r
 
 
 def get_on_sentinel_callback_function(output_exchange, players_by_key):
-    def on_sentinel_callback():
+    def on_sentinel_callback(_):
         # send the remaining players
         send_players_by_key(output_exchange, players_by_key, False)
     return on_sentinel_callback
@@ -36,8 +36,7 @@ def get_on_sentinel_callback_function(output_exchange, players_by_key):
 
 def get_dispach_to_reducers_function(output_exchange, players_by_key, partition_function):
     def dispach_to_reducers(queue, received_string, _):
-        received_players = [
-            player_string for player_string in split_rows_into_list(received_string)]
+        received_players = split_rows_into_list(received_string, skip_header=True)
         add_to_players_by_key(
             output_exchange,
             partition_function,
@@ -55,7 +54,7 @@ def receive_and_dispach_players(entry_queue, output_exchange, partition_function
         get_dispach_to_reducers_function(
             output_exchange, players_by_key, partition_function
         ),
-        get_on_sentinel_callback_function(
+        on_sentinel_callback=get_on_sentinel_callback_function(
             output_exchange, players_by_key
         )
     )
@@ -64,7 +63,8 @@ def receive_and_dispach_players(entry_queue, output_exchange, partition_function
 def declare_input_queue(connection):
     return QueueInterface(
         connection,
-        get_config_param(PLAYERS_INPUT_QUEUE_NAME_KEY, logger)
+        get_config_param(PLAYERS_INPUT_QUEUE_NAME_KEY, logger),
+        last_hash_strategy=LastHashStrategy.LAST_HASH_PER_REDUCER_ID
     )
 
 def main():
