@@ -26,7 +26,10 @@ class Supervisor:
         while self.leader == None:            
             self.leader = self.leader_queue.get()
             if self.leader != None:
-                logger.info(f"New leader elected: {self.leader}")
+                if self.leader == self.id:
+                    logger.info(f"I am the new leader")
+                else:
+                    logger.info(f"New leader elected: {self.leader}")
             else:
                 logger.debug("Leader = {}".format(self.leader))
     

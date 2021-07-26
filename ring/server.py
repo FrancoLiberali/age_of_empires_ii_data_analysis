@@ -34,11 +34,9 @@ class RingElectionServer:
     
     def handle_election_request(self, request):
         # the election went all the way round and the host continues being the leader -> declare leader
-        if request['leader'] == self.hostname and self.leader != self.hostname:
-            logger.debug(f"COORDINATOR self.leader: {self.leader} request['leader']: {request['leader']}")
-            ring.client.send_coordinator_message(self.hostname, self.hostname, self.nodes)
-            self.declare_as_leader()
-            logger.debug(f"COORDINATOR self.leader: {self.leader} self.hostname: {self.hostname}")
+        if request['leader'] == self.hostname:
+            self.participating = False
+            ring.client.send_coordinator_message(self.hostname, self.hostname, self.nodes)            
             return
         # incoming voted leader is greater than host -> forward incoming leader
         if (request['leader'] > self.hostname):
@@ -58,11 +56,11 @@ class RingElectionServer:
             logger.debug(f"Discarded election sent by {request['sender']} proposing {request['leader']}")
 
     def handle_coordinator_request(self, request):
-        if request['leader'] != self.hostname:
-            self.out_queue.put(request['leader'])
-            self.leader = request['leader']
-            ring.client.send_coordinator_message(request['leader'], self.hostname,self.nodes)
+        self.out_queue.put(request['leader'])
+        self.leader = request['leader']
         self.participating = False
+        if request['leader'] != self.hostname:
+            ring.client.send_coordinator_message(request['leader'], self.hostname,self.nodes)
 
     def recv_all(self, sock, size):
         buf=b''
