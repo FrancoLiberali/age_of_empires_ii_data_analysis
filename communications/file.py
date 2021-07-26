@@ -1,3 +1,4 @@
+import io
 import json
 import os
 
@@ -80,19 +81,20 @@ class ListFile(File):
     LIST_SEPARATOR = '\n'
 
     def _load_data(self):
-        return self.file.readline().split(ListFile.LIST_SEPARATOR)[0:-1]
+        return self.file.read().split(ListFile.LIST_SEPARATOR)[0:-1]
 
     def _generate_data(self):
         return []
 
     def write(self, list):
         list_string = ListFile.LIST_SEPARATOR.join(list)
+        self.file.seek(0, io.SEEK_END)
         self.file.write(f"{list_string}{ListFile.LIST_SEPARATOR}")
 
 
 class ListOfJsonFile(ListFile):
     def _load_data(self):
-        list = super()._load_data(self)
+        list = super()._load_data()
         return [json.loads(player_json) for player_json in list]
 
     def write(self, list_of_list):

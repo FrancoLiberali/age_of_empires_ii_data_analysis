@@ -20,7 +20,7 @@ class RabbitMQConnection:
         self.connection = pika.BlockingConnection(
             pika.ConnectionParameters(host=RABBITMQ_HOST)
         )
-        self.channel = self.connection.channel()  
+        self.channel = self.connection.channel()
 
     def close(self):
         self.connection.close()

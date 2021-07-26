@@ -60,6 +60,8 @@ def find_players_by_received_matches(matches_rows, players_by_match, matches):
             # allready players for that match
             if players_of_that_match is not None:
                 players_to_send += players_of_that_match
+        else:
+            logger.debug(f"Duplicated match found, match_id: {match_id}")
     return players_to_send, matches_to_add
 
 def add_matches_received(matches_file, new_matches_ids):
@@ -91,7 +93,6 @@ def get_filter_players_in_matches_function(matches_file, players_by_match, match
             logger.info("No more matches are comming, stoping saving players until it match come")
             no_more_matches[0] = True
             no_more_matches_file.write(True)
-            # TODO guardar esta variable en el estado persistente
             # delete all players stored, its match will never come
             shutil.rmtree(PLAYERS_STORAGE_DIR, ignore_errors=True)
         else:
@@ -127,23 +128,30 @@ STATE_STORAGE_DIR = "/data/"
 PLAYERS_STORAGE_DIR = STATE_STORAGE_DIR + "players/"
 MATCHES_FILE_NAME = "matches.txt"
 
-
-def join_players_and_matches(input_queue, output_queue, send_sentinel_to_master_function):
-    players_by_match = {}
-
-    matches_file = ListFile(
-        STATE_STORAGE_DIR,
-        MATCHES_FILE_NAME
-    )
+def get_initial_matches_and_players(matches_file):
     matches = {}
     for match_id in matches_file.content:
         matches[match_id] = MATCH_PRESENT
+
+    players_by_match = {}
+    os.makedirs(os.path.dirname(PLAYERS_STORAGE_DIR), exist_ok=True)
+    for match_id in os.listdir(PLAYERS_STORAGE_DIR):
         players_file = ListOfJsonFile(
             PLAYERS_STORAGE_DIR, match_id
         )
         players_by_match[match_id] = players_file.content
         players_file.close()
     logger.debug(f"Initial matches size: {len(matches.keys())}")
+    logger.debug(f"Initial players size: {len(players_by_match.keys())}")
+    return matches, players_by_match
+
+
+def join_players_and_matches(input_queue, output_queue, send_sentinel_to_master_function):
+    matches_file = ListFile(
+        STATE_STORAGE_DIR,
+        MATCHES_FILE_NAME
+    )
+    matches, players_by_match = get_initial_matches_and_players(matches_file)
 
     logger.info('Starting to receive players and matches in matches to join them.')
     input_queue.consume(
