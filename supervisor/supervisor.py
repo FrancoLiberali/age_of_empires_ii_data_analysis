@@ -10,7 +10,7 @@ import subprocess
 from logger.logger import Logger
 
 
-TASK_INTERVAL=3
+TASK_INTERVAL=4
 logger = Logger()
 
 class Supervisor:
@@ -35,19 +35,20 @@ class Supervisor:
 
     def start_node(self, node):
         result = subprocess.run(['docker', 'start', node], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        logger.info('Command executed. Result={}. Output={}. Error={}'.format(result.returncode, result.stdout, result.stderr))
+        logger.info('Starting {}. Result={}. Output={}. Error={}'.format(node, result.returncode, result.stdout, result.stderr))
 
     def do_leader_tasks(self):
-        logger.info(f"Doing leader tasks")
+        logger.info("Doing leader tasks")
         for node in self.nodes:
+            logger.info("Checking if {} is alive...".format(node))
             if not healthcheck.client.ping(node):
-                logger.info("Starting {}".format(node))
+                logger.info("{} is down. Starting it...".format(node))
                 self.start_node(node)
 
     def do_non_leader_tasks(self):
-        logger.info(f"Doing non leader tasks")
+        logger.info("Doing non leader tasks")
         if not healthcheck.client.ping(self.leader):
-            logger.info(f"Leader supervisor not responding")
+            logger.info("Leader supervisor {} not responding".format(self.leader))
             self.leader = None
             self.start_election()
 
