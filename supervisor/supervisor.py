@@ -42,7 +42,7 @@ class Supervisor:
         for node in self.nodes:
             if not healthcheck.client.ping(node):
                 logger.info("Starting {}".format(node))
-                # self.start_node(node)
+                self.start_node(node)
 
     def do_non_leader_tasks(self):
         logger.info(f"Doing non leader tasks")

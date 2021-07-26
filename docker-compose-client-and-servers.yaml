@@ -341,6 +341,7 @@ services:
       - ./healthcheck:/supervisor/healthcheck
       - ./logger:/supervisor/logger
       - ./config:/supervisor/config
+      - /var/run/docker.sock:/var/run/docker.sock
     entrypoint: python3 /supervisor/supervisor.py
     environment:
       - TZ=America/Argentina/Buenos_Aires
@@ -359,6 +360,7 @@ services:
       - ./healthcheck:/supervisor/healthcheck
       - ./logger:/supervisor/logger
       - ./config:/supervisor/config
+      - /var/run/docker.sock:/var/run/docker.sock
     entrypoint: python3 /supervisor/supervisor.py
     environment:
       - TZ=America/Argentina/Buenos_Aires
@@ -377,6 +379,7 @@ services:
       - ./healthcheck:/supervisor/healthcheck
       - ./logger:/supervisor/logger
       - ./config:/supervisor/config
+      - /var/run/docker.sock:/var/run/docker.sock
     entrypoint: python3 /supervisor/supervisor.py
     environment:
       - TZ=America/Argentina/Buenos_Aires
@@ -395,6 +398,7 @@ services:
       - ./healthcheck:/supervisor/healthcheck
       - ./logger:/supervisor/logger
       - ./config:/supervisor/config
+      - /var/run/docker.sock:/var/run/docker.sock
     entrypoint: python3 /supervisor/supervisor.py
     environment:
       - TZ=America/Argentina/Buenos_Aires
@@ -413,6 +417,7 @@ services:
       - ./healthcheck:/supervisor/healthcheck
       - ./logger:/supervisor/logger
       - ./config:/supervisor/config
+      - /var/run/docker.sock:/var/run/docker.sock
     entrypoint: python3 /supervisor/supervisor.py
     environment:
       - TZ=America/Argentina/Buenos_Aires
