@@ -301,7 +301,7 @@ services:
       - ./master_reducers_arq:/join_matches_and_players/master_reducers_arq
       - ./config:/join_matches_and_players/config
       - ./logger:/join_matches_and_players/logger
-      - ../age_of_empires_servers_data/join_reducer_1v1:/data
+      - ../age_of_empires_servers_data/join_reducer_1v1_${REDUCER_ID}:/data
     entrypoint: python3 /join_matches_and_players/reducer.py
     environment:
       - TZ=America/Argentina/Buenos_Aires

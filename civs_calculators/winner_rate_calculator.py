@@ -45,6 +45,7 @@ def main():
     )
 
     logger.info('All wins and defeats received, calculating winner rate')
+    logger.debug(f'wins_and_defeats_by_civ: {wins_and_defeats_by_civ}')
     winner_rates = {}
     for civ, wins_and_defeats in wins_and_defeats_by_civ.items():
         wins = wins_and_defeats[WINS_INDEX]
