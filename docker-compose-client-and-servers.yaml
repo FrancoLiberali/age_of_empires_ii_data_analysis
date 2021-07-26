@@ -332,6 +332,96 @@ services:
     networks:
       - age_of_empires_net
 
+  supervisor1:
+    container_name: supervisor1
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./supervisor:/supervisor
+      - ./ring:/supervisor/ring
+      - ./healthcheck:/supervisor/healthcheck
+      - ./logger:/supervisor/logger
+      - ./config:/supervisor/config
+    entrypoint: python3 /supervisor/supervisor.py
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      - SUPERVISOR_NAME=supervisor1
+      - SUPERVISORS=supervisor1,supervisor2,supervisor3,supervisor4,supervisor5
+      - NODES=supervisor1,supervisor2,supervisor3,supervisor4,supervisor5
+    networks:
+      - age_of_empires_net
+
+  supervisor2:
+    container_name: supervisor2
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./supervisor:/supervisor
+      - ./ring:/supervisor/ring
+      - ./healthcheck:/supervisor/healthcheck
+      - ./logger:/supervisor/logger
+      - ./config:/supervisor/config
+    entrypoint: python3 /supervisor/supervisor.py
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      - SUPERVISOR_NAME=supervisor2
+      - SUPERVISORS=supervisor1,supervisor2,supervisor3,supervisor4,supervisor5
+      - NODES=supervisor1,supervisor2,supervisor3,supervisor4,supervisor5
+    networks:
+      - age_of_empires_net
+
+  supervisor3:
+    container_name: supervisor3
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./supervisor:/supervisor
+      - ./ring:/supervisor/ring
+      - ./healthcheck:/supervisor/healthcheck
+      - ./logger:/supervisor/logger
+      - ./config:/supervisor/config
+    entrypoint: python3 /supervisor/supervisor.py
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      - SUPERVISOR_NAME=supervisor3
+      - SUPERVISORS=supervisor1,supervisor2,supervisor3,supervisor4,supervisor5
+      - NODES=supervisor1,supervisor2,supervisor3,supervisor4,supervisor5
+    networks:
+      - age_of_empires_net
+
+  supervisor4:
+    container_name: supervisor4
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./supervisor:/supervisor
+      - ./ring:/supervisor/ring
+      - ./healthcheck:/supervisor/healthcheck
+      - ./logger:/supervisor/logger
+      - ./config:/supervisor/config
+    entrypoint: python3 /supervisor/supervisor.py
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      - SUPERVISOR_NAME=supervisor4
+      - SUPERVISORS=supervisor1,supervisor2,supervisor3,supervisor4,supervisor5
+      - NODES=supervisor1,supervisor2,supervisor3,supervisor4,supervisor5
+    networks:
+      - age_of_empires_net
+
+  supervisor5:
+    container_name: supervisor5
+    image: rabbitmq-python-base:0.0.1
+    volumes:
+      - ./supervisor:/supervisor
+      - ./ring:/supervisor/ring
+      - ./healthcheck:/supervisor/healthcheck
+      - ./logger:/supervisor/logger
+      - ./config:/supervisor/config
+    entrypoint: python3 /supervisor/supervisor.py
+    environment:
+      - TZ=America/Argentina/Buenos_Aires
+      - SUPERVISOR_NAME=supervisor5
+      - SUPERVISORS=supervisor1,supervisor2,supervisor3,supervisor4,supervisor5
+      - NODES=supervisor1,supervisor2,supervisor3,supervisor4,supervisor5
+    networks:
+      - age_of_empires_net
+
 networks:
    age_of_empires_net:
       external:
