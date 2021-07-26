@@ -193,6 +193,16 @@ class QueueInterface(RabbitMQInterface):
     def stop_consuming(self):
         self.channel.stop_consuming()
 
+    def set_last_hash(self, last_hash_message):
+        hash_to_set = md5(last_hash_message.encode(STRING_ENCODING)).hexdigest()
+        if self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
+            self.last_hash = hash_to_set
+            self.last_hash_file.write(self.last_hash)
+        elif self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_REDUCER_ID or self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_ROUTING_KEY:
+            for entry in self.last_hash.keys():
+                self.last_hash[entry] = hash_to_set
+            self.last_hash_file.write(self.last_hash)
+
 
 def get_on_sentinel_send_sentinel_callback_function(output):
     def on_sentinel_callback(_, __):

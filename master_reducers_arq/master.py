@@ -9,6 +9,10 @@ from master_reducers_arq.partition_function import PartitionFunction
 logger = Logger()
 ROWS_CHUNK_SIZE = get_config_param(ROWS_CHUNK_SIZE_KEY, logger)
 
+def send_sentinel_to_reducers(output_exchage):
+    logger.info("Sending sentinel to reducers for alerting them than no more data will be sended.")
+    output_exchage.send_sentinel(SENTINEL_KEY)
+
 def send_dict_by_key(output_exchange, dict_by_key, tag_to_send=None, check_chunk_size=True):
     for key, rows in list(dict_by_key.items()):
         if len(rows) > ROWS_CHUNK_SIZE or (len(rows) > 0 and not check_chunk_size):
@@ -17,7 +21,6 @@ def send_dict_by_key(output_exchange, dict_by_key, tag_to_send=None, check_chunk
             output_exchange.send_list_as_rows(rows, key)
             dict_by_key.pop(key)
             del rows
-
 
 def add_to_dict_by_key(output_exchange,
                        partition_function,
@@ -149,15 +152,14 @@ def main_master(
         receive_and_dispach_function(
             entry_queue,
             output_exchage,
-            partition_function
+            partition_function,
+            state_file
         )
-
-        logger.info("Sending sentinel to reducers for alerting them than no more data will be sended.")
-        output_exchage.send_sentinel(SENTINEL_KEY)
 
         receive_sentinels_stage(
             state_file, barrier_queue, reducers_output_queue, entry_queue, reducers_amount)
     elif state == STATE_RECEIVING_SENTINELS:
+        entry_queue.set_last_hash(SENTINEL_MESSAGE)
         sentinels_received_file = JsonFile(
             STATE_STORAGE_DIR, SENTINELS_RECEIVED_FILE_NAME
         )
@@ -169,6 +171,7 @@ def main_master(
             receive_sentinels_stage(
                 state_file, barrier_queue, reducers_output_queue, entry_queue, reducers_amount)
 
+    state_file.close()
     connection.close()
 
 MASTER_ID = "master"
