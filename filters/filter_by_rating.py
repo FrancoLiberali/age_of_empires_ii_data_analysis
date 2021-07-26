@@ -1,7 +1,7 @@
 from config.envvars import MIN_RATING_KEY, OUTPUT_EXCHANGE_NAME_KEY, get_config_param
 from communications.constants import FILTER_BY_RATING_QUEUE_NAME, FROM_CLIENT_PLAYER_CIV_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
-    FROM_CLIENT_PLAYER_RATING_INDEX, \
+    FROM_CLIENT_PLAYER_RATING_INDEX, FROM_CLIENT_PLAYER_TOKEN_INDEX, \
     PLAYERS_FANOUT_EXCHANGE_NAME
 from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, RabbitMQConnection, get_on_sentinel_send_sentinel_callback_function, split_columns_into_list, split_rows_into_list
 from logger.logger import Logger
@@ -22,6 +22,7 @@ def get_filter_by_rating_function(output_exchange):
             if is_matched(columns):
                 players_matched.append(
                     [
+                        columns[FROM_CLIENT_PLAYER_TOKEN_INDEX],
                         columns[FROM_CLIENT_PLAYER_MATCH_INDEX],
                         columns[FROM_CLIENT_PLAYER_CIV_INDEX],
                     ]

@@ -27,7 +27,7 @@ def get_count_function(append_to_results_function, append_to_data_to_send_functi
 
 def get_group_players_by_civ_function(append_to_results_function, append_to_data_to_send_function):
     # python function currying
-    def group_players_by_civ(input_queue, output_queue):
+    def group_players_by_civ(input_queue, output_queue, send_sentinel_to_master_function):
         logger.info(
             f'Starting to receive players in matches to group by civ.')
         input_queue.consume(
@@ -36,6 +36,7 @@ def get_group_players_by_civ_function(append_to_results_function, append_to_data
                 append_to_data_to_send_function,
                 output_queue
             ),
+            on_sentinel_callback=send_sentinel_to_master_function
         )
 
         logger.info(f'All players in matches received grouped.')

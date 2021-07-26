@@ -3,8 +3,8 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
     JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, \
     JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, \
-    MATCHES_KEY, \
-    PLAYERS_KEY
+    MATCHES_KEY, MATCHES_SENTINEL, \
+    PLAYERS_KEY, SENTINEL_KEY
 from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, split_columns_into_list, split_rows_into_list
 from master_reducers_arq.master import main_master
 from logger.logger import Logger
@@ -14,7 +14,7 @@ ROWS_CHUNK_SIZE = get_config_param(ROWS_CHUNK_SIZE_KEY, logger)
 
 def send_dict_by_key(output_exchange, dict_by_key, tag_to_send, check_chunk_size=True):
     for key, rows in list(dict_by_key.items()):
-        if len(rows) > ROWS_CHUNK_SIZE or not check_chunk_size:
+        if len(rows) > ROWS_CHUNK_SIZE or (len(rows) > 0 and not check_chunk_size):
             output_exchange.send_list_as_rows([tag_to_send] + rows, key)
             dict_by_key.pop(key)
             del rows
@@ -39,10 +39,15 @@ def add_to_dict_by_key(output_exchange,
 INPUTS_AMOUNT = 2
 
 def get_on_sentinel_callback_function(output_exchange, players_by_key, matches_by_key, sentinels_count):
-    def on_sentinel_callback(_):
+    def on_sentinel_callback(_, routing_key):
         sentinels_count[0] += 1
         logger.info(
             f"Sentinel message: {sentinels_count[0]}/{INPUTS_AMOUNT} received")
+        if routing_key == MATCHES_KEY:
+            # send the remaining matches
+            send_dict_by_key(output_exchange, matches_by_key,
+                             JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, False)
+            output_exchange.send_string(MATCHES_SENTINEL, SENTINEL_KEY)
         if sentinels_count[0] == INPUTS_AMOUNT:
             logger.info("Stoping receive and dispach it to reducers.")
             # send the remaining players and matches

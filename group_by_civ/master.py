@@ -28,7 +28,7 @@ def add_to_players_by_key(output_exchange, partition_function, players_by_key, r
 
 
 def get_on_sentinel_callback_function(output_exchange, players_by_key):
-    def on_sentinel_callback(_):
+    def on_sentinel_callback(_, __):
         # send the remaining players
         send_players_by_key(output_exchange, players_by_key, False)
     return on_sentinel_callback

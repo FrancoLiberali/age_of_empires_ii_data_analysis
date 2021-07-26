@@ -1,6 +1,6 @@
+from logging import log
+from communications.file import JsonFile, OneLineFile
 from hashlib import md5
-import json
-import os
 import pika
 
 from logger.logger import Logger
@@ -95,21 +95,18 @@ class QueueInterface(RabbitMQInterface):
         RabbitMQInterface.__init__(self, rabbit_MQ_connection, name)
         self.last_hash_strategy = last_hash_strategy
         if self.last_hash_strategy != LastHashStrategy.NO_LAST_HASH_SAVING:
-            os.makedirs(os.path.dirname(LAST_HASH_DIR_PATH), exist_ok=True)
-            last_hash_file_path = LAST_HASH_DIR_PATH + name + ".txt"
-            try:
-                self.last_hash_file = open(last_hash_file_path, "r+")
-                if self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
-                    self.last_hash = self.last_hash_file.readline()
-                else:
-                    self.last_hash = json.load(self.last_hash_file)
-            except FileNotFoundError:
-                logger.debug(f"{self.name} - Last hash file not found, creating.")
-                self.last_hash_file = open(last_hash_file_path, "w+")
-                if self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
-                    self.last_hash = ''
-                else:
-                    self.last_hash = {}
+            # TODO nunca se hace el close
+            if self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_ROUTING_KEY or self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_REDUCER_ID:
+                self.last_hash_file = JsonFile(
+                    LAST_HASH_DIR_PATH,
+                    name + ".json"
+                )
+            elif self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
+                self.last_hash_file = OneLineFile(
+                    LAST_HASH_DIR_PATH,
+                    name + ".txt"
+                )
+            self.last_hash = self.last_hash_file.content
 
             logger.debug(
                     f"{self.name} - Initial last hash: {self.last_hash}")
@@ -152,7 +149,8 @@ class QueueInterface(RabbitMQInterface):
                     stop = QueueInterface.STOP_CONSUMING
                     if on_sentinel_callback is not None:
                         stop = on_sentinel_callback(
-                            splited_chunk_string[QueueInterface.REDUCER_ID_INDEX]
+                            splited_chunk_string[QueueInterface.REDUCER_ID_INDEX],
+                            method.routing_key
                         )
                     if stop is QueueInterface.STOP_CONSUMING:
                         logger.info("Sentinel message received, stoping receiving")
@@ -187,19 +185,17 @@ class QueueInterface(RabbitMQInterface):
     def _store_actual_hash(self, actual_hash, entry):
         if self.last_hash_strategy == LastHashStrategy.ONE_LAST_HASH_SAVING:
             self.last_hash = actual_hash
-            self.last_hash_file.seek(0)
             self.last_hash_file.write(self.last_hash)
         elif self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_REDUCER_ID or self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_ROUTING_KEY:
             self.last_hash[entry] = actual_hash
-            self.last_hash_file.seek(0)
-            json.dump(self.last_hash, self.last_hash_file)
+            self.last_hash_file.write(self.last_hash)
 
     def stop_consuming(self):
         self.channel.stop_consuming()
 
 
 def get_on_sentinel_send_sentinel_callback_function(output):
-    def on_sentinel_callback(_):
+    def on_sentinel_callback(_, __):
         logger.info(
             "Sending sentinel to next stage to notify that all data has been sended")
         output.send_sentinel()

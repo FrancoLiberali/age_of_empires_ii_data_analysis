@@ -36,16 +36,15 @@ def get_group_by_match_function(players_by_match):
     return group_by_match
 
 
-def process_player_by_match(input_queue, output_queue):
+def process_player_by_match(input_queue, output_queue, send_sentinel_to_master_function):
     players_by_match = {}
     logger.info(f'Starting to receive players in matches to group them.')
     input_queue.consume(
-        get_group_by_match_function(players_by_match)
+        get_group_by_match_function(players_by_match),
+        on_sentinel_callback=get_send_matches_ids_to_client_function(
+            output_queue, players_by_match, send_sentinel_to_master_function
+        )
     )
-
-    logger.info(f'All players in matches grouped.')
-    return players_by_match
-
 
 def filter_players_by_weaker_winner(players_by_match):
     minimun_rating = get_config_param(MINIMUM_RATING_KEY, logger)
@@ -70,21 +69,25 @@ def filter_players_by_weaker_winner(players_by_match):
     return matches_ids
 
 
-def send_matches_ids_to_client(output_queue, players_by_match):
-    matches_ids = filter_players_by_weaker_winner(players_by_match)
-    logger.info(f"All matches with weaker winner found")
+def get_send_matches_ids_to_client_function(output_queue, players_by_match, send_sentinel_to_master_function):
+    def send_matches_ids_to_client(_, __):
+        logger.info(f'All players in matches grouped.')
+        matches_ids = filter_players_by_weaker_winner(players_by_match)
+        logger.info(f"All matches with weaker winner found")
 
-    output_queue.send_list_as_rows(
-        matches_ids,
-        header_line=HEADER_LINE
-    )
+        output_queue.send_list_as_rows(
+            matches_ids,
+            header_line=HEADER_LINE
+        )
+
+        send_sentinel_to_master_function(_, __)
+    return send_matches_ids_to_client
 
 def main():
     main_reducer(
         BARRIER_QUEUE_NAME,
         OUTPUT_QUEUE_NAME,
-        process_player_by_match,
-        send_matches_ids_to_client
+        process_player_by_match
     )
 
 if __name__ == '__main__':
