@@ -1,4 +1,5 @@
-from communications.file import JsonFile
+import os
+from communications.file import JsonFile, OneLineFile
 from config.envvars import REDUCERS_AMOUNT_KEY, REDUCERS_QUEUE_PREFIX_KEY, ROWS_CHUNK_SIZE_KEY, get_config_param
 from communications.constants import SENTINEL_KEY
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, SENTINEL_MESSAGE, SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR, split_columns_into_list
@@ -38,6 +39,7 @@ def add_to_dict_by_key(output_exchange,
 RECEIVED = 1
 STATE_STORAGE_DIR = "/data/"
 SENTINELS_RECEIVED_FILE_NAME = "sentinels.txt"
+STATE_FILE_NAME = "state.txt"
 
 def get_receive_sentinel_function(sentinels_objetive):
     # python function currying
@@ -49,11 +51,11 @@ def get_receive_sentinel_function(sentinels_objetive):
         if reducers_map.get(reducer_id, None) is None:
             reducers_map[reducer_id] = RECEIVED
             sentinels_received_file.write(reducers_map)
-            sentinel_received_amount = len(reducers_map.keys())
-            logger.info(
-                f"Recived sentinel from reducer {reducer_id}. Sentinels received: {sentinel_received_amount} / {sentinels_objetive}")
-            if sentinel_received_amount == sentinels_objetive:
-                return QueueInterface.STOP_CONSUMING
+        sentinel_received_amount = len(reducers_map.keys())
+        logger.info(
+            f"Recived sentinel from reducer {reducer_id}. Sentinels received: {sentinel_received_amount} / {sentinels_objetive}")
+        if sentinel_received_amount == sentinels_objetive:
+            return QueueInterface.STOP_CONSUMING
         return QueueInterface.NO_STOP_CONSUMING
     return on_sentinel_callback
 
@@ -87,6 +89,29 @@ def subscribe_reducers_queues_to_keys(connection, reducers_input_exchange, parti
     logger.info("All reducers queues subscribed to keys")
 
 
+def send_sentinel_and_go_to_dispaching(state_file, reducers_output_queue, entry_queue):
+    logger.info("Sending sentinel to next stage to notify all data sended")
+    send_sentinel_with_master_id_and_last_hash(
+        reducers_output_queue, entry_queue
+    )
+    state_file.write(STATE_DISPACHING)
+
+def receive_sentinels_stage(state_file, barrier_queue, reducers_output_queue, entry_queue, reducers_amount):
+    logger.info(
+        "Waiting for a sentinel per reducer that notifies they finished.")
+    receive_a_sentinel_per_reducer(barrier_queue, reducers_amount)
+    send_sentinel_and_go_to_dispaching(
+        state_file, reducers_output_queue, entry_queue)
+
+def delete_sentinels_received():
+    try:
+        os.remove(STATE_STORAGE_DIR + SENTINELS_RECEIVED_FILE_NAME)
+    except FileNotFoundError:
+        pass
+
+STATE_DISPACHING = "STATE_DISPACHING"
+STATE_RECEIVING_SENTINELS = "STATE_RECEIVING_SENTINELS"
+
 def main_master(
         barrier_queue_name,
         reducers_output_queue_name,
@@ -114,21 +139,35 @@ def main_master(
         reducers_amount
     )
 
-    receive_and_dispach_function(
-        entry_queue,
-        output_exchage,
-        partition_function
+    state_file = OneLineFile(
+        STATE_STORAGE_DIR, STATE_FILE_NAME
     )
+    state = state_file.content or STATE_DISPACHING
 
-    logger.info("Sending sentinel to reducers for alerting them than no more data will be sended.")
-    output_exchage.send_sentinel(SENTINEL_KEY)
-    logger.info("Waiting for a sentinel per reducer that notifies they finished.")
-    receive_a_sentinel_per_reducer(barrier_queue, reducers_amount)
+    if state == STATE_DISPACHING:
+        delete_sentinels_received()
+        receive_and_dispach_function(
+            entry_queue,
+            output_exchage,
+            partition_function
+        )
 
-    logger.info("Sending sentinel to next stage to notify all data sended")
-    send_sentinel_with_master_id_and_last_hash(
-        reducers_output_queue, entry_queue
-    )
+        logger.info("Sending sentinel to reducers for alerting them than no more data will be sended.")
+        output_exchage.send_sentinel(SENTINEL_KEY)
+
+        receive_sentinels_stage(
+            state_file, barrier_queue, reducers_output_queue, entry_queue, reducers_amount)
+    elif state == STATE_RECEIVING_SENTINELS:
+        sentinels_received_file = JsonFile(
+            STATE_STORAGE_DIR, SENTINELS_RECEIVED_FILE_NAME
+        )
+        sentinel_received_amount = len(sentinels_received_file.content.keys())
+        sentinels_received_file.close()
+        if sentinel_received_amount == reducers_amount:
+            send_sentinel_and_go_to_dispaching()
+        else:
+            receive_sentinels_stage(
+                state_file, barrier_queue, reducers_output_queue, entry_queue, reducers_amount)
 
     connection.close()
 
