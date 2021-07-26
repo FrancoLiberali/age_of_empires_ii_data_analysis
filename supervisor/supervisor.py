@@ -39,14 +39,15 @@ class Supervisor:
 
     def do_leader_tasks(self):
         logger.info("Doing leader tasks")
+        logger.info("Checking if all nodes are alive...")
         for node in self.nodes:
-            logger.info("Checking if {} is alive...".format(node))
             if not healthcheck.client.ping(node):
                 logger.info("{} is down. Starting it...".format(node))
                 self.start_node(node)
 
     def do_non_leader_tasks(self):
         logger.info("Doing non leader tasks")
+        logger.info("Checking if leader supervisor is alive...")
         if not healthcheck.client.ping(self.leader):
             logger.info("Leader supervisor {} not responding".format(self.leader))
             self.leader = None
