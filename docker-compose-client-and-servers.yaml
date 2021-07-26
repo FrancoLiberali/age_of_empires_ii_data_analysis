@@ -334,7 +334,7 @@ services:
 
   supervisor1:
     container_name: supervisor1
-    image: rabbitmq-python-base:0.0.1
+    image: supervisor:0.0.1
     volumes:
       - ./supervisor:/supervisor
       - ./ring:/supervisor/ring
@@ -352,7 +352,7 @@ services:
 
   supervisor2:
     container_name: supervisor2
-    image: rabbitmq-python-base:0.0.1
+    image: supervisor:0.0.1
     volumes:
       - ./supervisor:/supervisor
       - ./ring:/supervisor/ring
@@ -370,7 +370,7 @@ services:
 
   supervisor3:
     container_name: supervisor3
-    image: rabbitmq-python-base:0.0.1
+    image: supervisor:0.0.1
     volumes:
       - ./supervisor:/supervisor
       - ./ring:/supervisor/ring
@@ -388,7 +388,7 @@ services:
 
   supervisor4:
     container_name: supervisor4
-    image: rabbitmq-python-base:0.0.1
+    image: supervisor:0.0.1
     volumes:
       - ./supervisor:/supervisor
       - ./ring:/supervisor/ring
@@ -406,7 +406,7 @@ services:
 
   supervisor5:
     container_name: supervisor5
-    image: rabbitmq-python-base:0.0.1
+    image: supervisor:0.0.1
     volumes:
       - ./supervisor:/supervisor
       - ./ring:/supervisor/ring
