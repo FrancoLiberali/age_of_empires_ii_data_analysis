@@ -160,7 +160,7 @@ class QueueInterface(RabbitMQInterface):
                 self._store_actual_hash(actual_hash, entry)
             else:
                 logger.debug(
-                    f"{self.name} - Duplicated message: {actual_hash} {chunk_string}")
+                    f"{self.name} - Duplicated message: hash:{actual_hash} message:{chunk_string}")
             channel.basic_ack(delivery_tag=method.delivery_tag)
         return internal_on_message_callback
 
