@@ -112,6 +112,21 @@ def delete_sentinels_received():
     except FileNotFoundError:
         pass
 
+
+def dispach_stage(receive_and_dispach_function, entry_queue, output_exchage, partition_function, state_file,
+                  barrier_queue, reducers_output_queue, reducers_amount):
+    receive_and_dispach_function(
+        entry_queue,
+        output_exchage,
+        partition_function,
+        state_file
+    )
+
+    receive_sentinels_stage(
+        state_file, barrier_queue, reducers_output_queue, entry_queue, reducers_amount)
+
+
+STATE_CONFIGURING_QUEUES = "STATE_CONFIGURING_QUEUES"
 STATE_DISPACHING = "STATE_DISPACHING"
 STATE_RECEIVING_SENTINELS = "STATE_RECEIVING_SENTINELS"
 
@@ -135,29 +150,25 @@ def main_master(
 
     output_exchage = ExchangeInterface.newDirect(
         connection, output_exchange_name)
-    subscribe_reducers_queues_to_keys(
-        connection,
-        output_exchage,
-        partition_function,
-        reducers_amount
-    )
 
     state_file = OneLineFile(
         STATE_STORAGE_DIR, STATE_FILE_NAME
     )
-    state = state_file.content or STATE_DISPACHING
-
-    if state == STATE_DISPACHING:
-        delete_sentinels_received()
-        receive_and_dispach_function(
-            entry_queue,
+    state = state_file.content or STATE_CONFIGURING_QUEUES
+    if state == STATE_CONFIGURING_QUEUES:
+        subscribe_reducers_queues_to_keys(
+            connection,
             output_exchage,
             partition_function,
-            state_file
+            reducers_amount
         )
-
-        receive_sentinels_stage(
-            state_file, barrier_queue, reducers_output_queue, entry_queue, reducers_amount)
+        state_file.write(STATE_DISPACHING)
+        dispach_stage(receive_and_dispach_function, entry_queue, output_exchage, partition_function, state_file,
+                      barrier_queue, reducers_output_queue, reducers_amount)
+    elif state == STATE_DISPACHING:
+        delete_sentinels_received()
+        dispach_stage(receive_and_dispach_function, entry_queue, output_exchage, partition_function, state_file,
+                      barrier_queue, reducers_output_queue, reducers_amount)
     elif state == STATE_RECEIVING_SENTINELS:
         entry_queue.set_last_hash(SENTINEL_MESSAGE)
         sentinels_received_file = JsonFile(
