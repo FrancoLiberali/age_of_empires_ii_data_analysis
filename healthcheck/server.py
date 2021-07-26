@@ -1,6 +1,7 @@
 from logger.logger import Logger
 from socketserver import TCPServer
 import socketserver
+import socket
 
 RECV=b'PING!'
 SEND=b'PONG!'
@@ -12,9 +13,16 @@ logger=Logger()
 class PingHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
-        self.data = self.request.recv(5)
+        try:
+            self.data = self.request.recv(len(RECV))
+        except socket.errror as err:
+            logger.info("PingHandler: Socket error receiving ping request: {}".format(err.strerror))
+            return
         if self.data == RECV:
-            self.request.sendall(SEND)
+            try:
+                self.request.sendall(SEND)
+            except socket.error as err:
+                logger.info("PingHandler: Socket error responding ping request: {}".format(err.strerror))
 
 
 def run():

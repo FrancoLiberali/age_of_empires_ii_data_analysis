@@ -10,10 +10,15 @@ def ping(host):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
         sock.connect((host, PORT))
-        sock.sendall(RECV)        
+        sock.sendall(SEND)        
     except socket.error:
-        logger.info(f"Sent ping request to {host} and did not respond")
         return False
-    data = sock.recv(5)
-    logger.info(f"Sent ping request to {host} and got response")
+    data=b''
+    while len(data) < len(RECV):
+        try:
+            data += sock.recv(len(RECV) - len(data))
+        except socket.error:
+            return False
+    if data != RECV:
+        return False
     return True
