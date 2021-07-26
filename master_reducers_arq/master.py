@@ -1,3 +1,4 @@
+from communications.file import JsonFile
 from config.envvars import REDUCERS_AMOUNT_KEY, REDUCERS_QUEUE_PREFIX_KEY, ROWS_CHUNK_SIZE_KEY, get_config_param
 from communications.constants import SENTINEL_KEY
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, SENTINEL_MESSAGE, SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR, split_columns_into_list
@@ -34,25 +35,33 @@ def add_to_dict_by_key(output_exchange,
     # TODO sacar el check_chunk_size=False para volver a poner la optimizacion de chunks si queda tiempo
     send_dict_by_key(output_exchange, dict_by_key, tag_to_send=tag_to_send, check_chunk_size=False)
 
+RECEIVED = 1
+STATE_STORAGE_DIR = "/data/"
+SENTINELS_RECEIVED_FILE_NAME = "sentinels.txt"
 
-def get_receive_sentinel_function(sentinel_received_amount, sentinels_objetive):
+def get_receive_sentinel_function(sentinels_objetive):
     # python function currying
+    sentinels_received_file = JsonFile(
+        STATE_STORAGE_DIR, SENTINELS_RECEIVED_FILE_NAME
+    )
+    reducers_map = sentinels_received_file.content
     def on_sentinel_callback(reducer_id, _):
-        sentinel_received_amount[0] += 1
-        logger.info(
-            f"Recived sentinel from reducer {reducer_id}. Sentinels received: {sentinel_received_amount[0]} / {sentinels_objetive}")
-        if sentinel_received_amount[0] == sentinels_objetive:
-            return QueueInterface.STOP_CONSUMING
+        if reducers_map.get(reducer_id, None) is None:
+            reducers_map[reducer_id] = RECEIVED
+            sentinels_received_file.write(reducers_map)
+            sentinel_received_amount = len(reducers_map.keys())
+            logger.info(
+                f"Recived sentinel from reducer {reducer_id}. Sentinels received: {sentinel_received_amount} / {sentinels_objetive}")
+            if sentinel_received_amount == sentinels_objetive:
+                return QueueInterface.STOP_CONSUMING
         return QueueInterface.NO_STOP_CONSUMING
     return on_sentinel_callback
 
 
 def receive_a_sentinel_per_reducer(barrier_queue, reducers_amount):
-    sentinel_received_amount = [0]  # using a list to pass by reference
     barrier_queue.consume(
         None,
         on_sentinel_callback=get_receive_sentinel_function(
-            sentinel_received_amount,
             reducers_amount
         )
     )
