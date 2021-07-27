@@ -18,7 +18,7 @@ class PingHandler(socketserver.BaseRequestHandler):
             while len(data) < len(RECV):
                 data += self.request.recv(len(RECV) - len(data))
                 logger.debug("Server Receive: data={} len(data)={}".format(data, len(data)))
-        except socket.errror as err:
+        except socket.error as err:
             logger.debug("PingHandler: Socket error receiving ping request: {}".format(err.strerror))
             return
         if data == RECV:
