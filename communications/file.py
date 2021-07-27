@@ -43,6 +43,7 @@ class OneLineFile(File):
     def write(self, text):
         self.file.seek(0)
         self.file.write(text)
+        self.file.truncate()
 
 class BooleanFile(File):
     TRUE_REPRESENTATION = "1"
@@ -68,7 +69,11 @@ class BooleanFile(File):
 
 class JsonFile(File):
     def _load_data(self):
-        return json.load(self.file)
+        filesize = os.path.getsize(self.full_name)
+        if filesize == 0:
+            return {}
+        else:
+            return json.load(self.file)
 
     def _generate_data(self):
         return {}
@@ -76,6 +81,7 @@ class JsonFile(File):
     def write(self, dict):
         self.file.seek(0)
         json.dump(dict, self.file)
+        self.file.truncate()
 
 class ListFile(File):
     LIST_SEPARATOR = '\n'

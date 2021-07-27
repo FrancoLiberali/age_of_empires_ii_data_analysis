@@ -1,3 +1,4 @@
+from communications.file import JsonFile, OneLineFile
 from config.envvars import BARRIER_QUEUE_NAME_KEY, INPUT_QUEUE_NAME_KEY, MATCHES_INPUT_EXCHANGE_NAME_KEY, OUTPUT_EXCHANGE_NAME_KEY, PLAYERS_INPUT_EXCHANGE_NAME_KEY, REDUCERS_OUTPUT_QUEUE_NAME_KEY, ROWS_CHUNK_SIZE_KEY, get_config_param
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
@@ -6,25 +7,36 @@ from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     MATCHES_KEY, MATCHES_SENTINEL, \
     PLAYERS_KEY, SENTINEL_KEY
 from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, split_columns_into_list, split_rows_into_list
-from master_reducers_arq.master import STATE_RECEIVING_SENTINELS, add_to_dict_by_key, main_master, send_dict_by_key, send_sentinel_to_reducers
+from master_reducers_arq.master import RECEIVED, STATE_RECEIVING_SENTINELS, STATE_STORAGE_DIR, add_to_dict_by_key, main_master, send_dict_by_key, send_sentinel_to_reducers
 from logger.logger import Logger
 
 logger = Logger()
 INPUTS_AMOUNT = 2
+ENTRY_SENTINELS_FILE = "entry_sentinels.json"
 
-
-def get_on_sentinel_callback_function(output_exchange, players_by_key, matches_by_key, sentinels_count, state_file):
+def get_on_sentinel_callback_function(output_exchange, players_by_key, matches_by_key, state_file):
+    sentinels_received_file = JsonFile(
+        STATE_STORAGE_DIR, ENTRY_SENTINELS_FILE
+    )
+    entries_map = sentinels_received_file.content
+    logger.debug(
+        f"Initial entry sentinels received: {len(entries_map.keys())}")
     def on_sentinel_callback(_, routing_key):
-        sentinels_count[0] += 1
+        if entries_map.get(routing_key, None) is None:
+            entries_map[routing_key] = RECEIVED
+            sentinels_received_file.write(entries_map)
+
+        sentinels_count = len(entries_map.keys())
         logger.info(
-            f"Sentinel message: {sentinels_count[0]}/{INPUTS_AMOUNT} received")
+            f"Sentinel message: {sentinels_count}/{INPUTS_AMOUNT} received")
         if routing_key == MATCHES_KEY:
+            logger.info("Sendinf matches sentinels because all matches had come")
             # TODO descomentar esto para volver a poner la optimizacion de chunks si queda tiempo. Requiere reanalizar estados
             # send the remaining matches
             # send_dict_by_key(output_exchange, matches_by_key,
                             #  JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, check_chunk_size=False)
             output_exchange.send_string(MATCHES_SENTINEL, SENTINEL_KEY)
-        if sentinels_count[0] == INPUTS_AMOUNT:
+        if sentinels_count == INPUTS_AMOUNT:
             logger.info("Stoping receive and dispach it to reducers.")
             # TODO descomentar esto para volver a poner la optimizacion de chunks si queda tiempo. Requiere reanalizar estados
             # send the remaining players and matches
@@ -34,6 +46,8 @@ def get_on_sentinel_callback_function(output_exchange, players_by_key, matches_b
                             #  JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, check_chunk_size=False)
             send_sentinel_to_reducers(output_exchange)
             state_file.write(STATE_RECEIVING_SENTINELS)
+            sentinels_received_file.write({})
+            sentinels_received_file.close()
             return QueueInterface.STOP_CONSUMING
         return QueueInterface.NO_STOP_CONSUMING
     return on_sentinel_callback
@@ -65,7 +79,6 @@ def get_dispach_to_reducers_function(output_exchange, players_by_key, matches_by
 def receive_and_dispach_players_and_matches(entry_queue, output_exchange, partition_function, state_file):
     players_by_key = {}
     matches_by_key = {}
-    sentinels_count = [0]
     logger.info("Starting to receive players and matches and dispach it to reducers by key")
     entry_queue.consume(
         get_dispach_to_reducers_function(
@@ -78,7 +91,6 @@ def receive_and_dispach_players_and_matches(entry_queue, output_exchange, partit
             output_exchange,
             players_by_key,
             matches_by_key,
-            sentinels_count,
             state_file
         )
     )
@@ -105,6 +117,8 @@ def subscribe_to_entries(connection):
     return input_queue
 
 def main():
+    # TODO CONSULTAR, al matarlo igual rabbit sigue diciendo que la conexion esta y los mensajes como estan en Unacked
+    # no los vuelve a leer, despues de un rato recien reacciona
     main_master(
         get_config_param(BARRIER_QUEUE_NAME_KEY, logger),
         get_config_param(REDUCERS_OUTPUT_QUEUE_NAME_KEY, logger),

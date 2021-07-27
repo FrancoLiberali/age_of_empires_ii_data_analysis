@@ -41,7 +41,7 @@ def add_to_dict_by_key(output_exchange,
 
 RECEIVED = 1
 STATE_STORAGE_DIR = "/data/"
-SENTINELS_RECEIVED_FILE_NAME = "sentinels.txt"
+SENTINELS_RECEIVED_FILE_NAME = "sentinels.json"
 STATE_FILE_NAME = "state.txt"
 
 def get_receive_sentinel_function(sentinels_objetive):
@@ -50,6 +50,7 @@ def get_receive_sentinel_function(sentinels_objetive):
         STATE_STORAGE_DIR, SENTINELS_RECEIVED_FILE_NAME
     )
     reducers_map = sentinels_received_file.content
+    logger.debug(f"Initial reducers sentinels received: {len(reducers_map.keys())}")
     def on_sentinel_callback(reducer_id, _):
         if reducers_map.get(reducer_id, None) is None:
             reducers_map[reducer_id] = RECEIVED
@@ -156,6 +157,7 @@ def main_master(
     )
     state = state_file.content or STATE_CONFIGURING_QUEUES
     if state == STATE_CONFIGURING_QUEUES:
+        logger.debug("Init at config queues")
         subscribe_reducers_queues_to_keys(
             connection,
             output_exchage,
@@ -163,13 +165,17 @@ def main_master(
             reducers_amount
         )
         state_file.write(STATE_DISPACHING)
+        logger.info("Finished reducers queues configuration")
         dispach_stage(receive_and_dispach_function, entry_queue, output_exchage, partition_function, state_file,
                       barrier_queue, reducers_output_queue, reducers_amount)
     elif state == STATE_DISPACHING:
+        # TODO cuando haya loop al entrar hacer sentinels_received_file.write({})
+        logger.debug("Init at dispaching")
         delete_sentinels_received()
         dispach_stage(receive_and_dispach_function, entry_queue, output_exchage, partition_function, state_file,
                       barrier_queue, reducers_output_queue, reducers_amount)
     elif state == STATE_RECEIVING_SENTINELS:
+        logger.debug("Init at receiving sentinels")
         entry_queue.set_last_hash(SENTINEL_MESSAGE)
         sentinels_received_file = JsonFile(
             STATE_STORAGE_DIR, SENTINELS_RECEIVED_FILE_NAME
