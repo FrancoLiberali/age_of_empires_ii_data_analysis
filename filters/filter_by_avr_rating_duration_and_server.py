@@ -47,7 +47,7 @@ def is_matched(columns):
 
 
 def get_filter_by_duration_average_rating_and_server_function(output_queue):
-    def filter_by_duration_average_rating_and_server(queue, received_string, _):
+    def filter_by_duration_average_rating_and_server(queue, received_string, _, __):
         matches_ids = []
         for row in split_rows_into_list(received_string):
             columns = split_columns_into_list(row)

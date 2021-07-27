@@ -17,7 +17,7 @@ def get_on_sentinel_callback_function(output_exchange, players_by_key, state_fil
 
 
 def get_dispach_to_reducers_function(output_exchange, players_by_key, partition_function, skip_header):
-    def dispach_to_reducers(queue, received_string, _):
+    def dispach_to_reducers(queue, received_string, _, __):
         received_players = split_rows_into_list(
             received_string, skip_header=skip_header)
         add_to_dict_by_key(

@@ -88,7 +88,7 @@ def get_filter_players_in_matches_function(matches_file, players_by_match, match
         STATE_STORAGE_DIR, NO_MORE_MATCHES_FILE_NAME)
     no_more_matches = [no_more_matches_file.content]
     # python function currying
-    def filter_players_in_matches(queue, received_string, _):
+    def filter_players_in_matches(queue, received_string, _, __):
         if received_string == MATCHES_SENTINEL:
             logger.info("No more matches are comming, stoping saving players until it match come")
             no_more_matches[0] = True

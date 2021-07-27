@@ -15,7 +15,7 @@ def is_matched(columns):
 
 
 def get_filter_by_rating_function(output_exchange):
-    def filter_by_rating(queue, received_string, _):
+    def filter_by_rating(queue, received_string, _, __):
         players_matched = []
         for row in split_rows_into_list(received_string):
             columns = split_columns_into_list(row)

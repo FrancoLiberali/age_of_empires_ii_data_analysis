@@ -9,7 +9,7 @@ logger = Logger()
 def get_count_function(append_to_results_function, append_to_data_to_send_function, output_queue):
     header_line_constant_part = f"{get_config_param(REDUCER_ID_KEY, logger)}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}"
     # python function currying
-    def count(queue, received_string, _):
+    def count(queue, received_string, _, __):
         results_by_civ = {}
         for player_string in split_rows_into_list(received_string):
             player_columns = split_columns_into_list(player_string)

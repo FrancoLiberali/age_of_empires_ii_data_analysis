@@ -126,18 +126,19 @@ class QueueInterface(RabbitMQInterface):
             body=message.encode(STRING_ENCODING)
         )
 
-    def consume(self, on_message_callback, on_sentinel_callback=None):
+    def consume(self, on_message_callback, on_sentinel_callback=None, between_hash_and_ack_callback=None):
         self.channel.basic_consume(
             queue=self.name,
             on_message_callback=self._get_on_message_callback_function(
                 on_message_callback,
-                on_sentinel_callback
+                on_sentinel_callback,
+                between_hash_and_ack_callback
             ),
             auto_ack=False
         )
         self.channel.start_consuming()
 
-    def _get_on_message_callback_function(self, on_message_callback, on_sentinel_callback):
+    def _get_on_message_callback_function(self, on_message_callback, on_sentinel_callback, between_hash_and_ack_callback):
         def internal_on_message_callback(channel, method, properties, body):
             actual_hash = md5(body).hexdigest()
             chunk_string = body.decode(STRING_ENCODING)
@@ -145,7 +146,11 @@ class QueueInterface(RabbitMQInterface):
             if self._is_different_to_last_hash(actual_hash, entry):
                 splited_chunk_string = chunk_string.split(
                     SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR)
-                if chunk_string == SENTINEL_MESSAGE or splited_chunk_string[QueueInterface.SENTINEL_INDEX] == SENTINEL_MESSAGE:
+                is_sentinel = (
+                    chunk_string == SENTINEL_MESSAGE or
+                    splited_chunk_string[QueueInterface.SENTINEL_INDEX] == SENTINEL_MESSAGE
+                )
+                if is_sentinel:
                     stop = QueueInterface.STOP_CONSUMING
                     if on_sentinel_callback is not None:
                         stop = on_sentinel_callback(
@@ -156,8 +161,10 @@ class QueueInterface(RabbitMQInterface):
                         logger.info("Sentinel message received, stoping receiving")
                         channel.stop_consuming()
                 else:
-                    on_message_callback(self, chunk_string, method.routing_key)
+                    on_message_callback(self, chunk_string, method.routing_key, actual_hash)
                 self._store_actual_hash(actual_hash, entry)
+                if not is_sentinel and between_hash_and_ack_callback is not None:
+                    between_hash_and_ack_callback(actual_hash)
             else:
                 logger.debug(
                     f"{self.name} - Duplicated message: hash:{actual_hash} message:{chunk_string}")

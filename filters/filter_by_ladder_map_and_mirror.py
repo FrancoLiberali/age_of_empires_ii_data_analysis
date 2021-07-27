@@ -53,7 +53,7 @@ def get_on_sentinel_callback_function(output_1v1_exchage, output_team_exchage):
     return on_sentinel_callback
 
 def get_filter_by_ladder_map_and_mirror_function(output_1v1_exchage, output_team_exchage):
-    def filter_by_ladder_map_and_mirror(queue, received_string, _):
+    def filter_by_ladder_map_and_mirror(queue, received_string, _, __):
         matches_1v1_matched = []
         matches_team_matched = []
         for row in split_rows_into_list(received_string):

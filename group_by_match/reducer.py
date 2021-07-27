@@ -35,7 +35,7 @@ def can_match_be_1_vs_1(players_list, new_player):
 def get_group_by_match_function(players_by_match, players_file):
     # python function currying
     minimun_rating = get_config_param(MINIMUM_RATING_KEY, logger)
-    def group_by_match(queue, received_string, _):
+    def group_by_match(queue, received_string, _, __):
         players_to_add = []
         for player_string in split_rows_into_list(received_string):
             player_columns = split_columns_into_list(player_string)
