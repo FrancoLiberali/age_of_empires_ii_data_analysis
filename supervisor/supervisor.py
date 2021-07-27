@@ -46,12 +46,20 @@ class Supervisor:
         logger.info('Starting {}...'.format(node))
         logger.debug('Starting {}. Result={}. Output={}. Error={}'.format(node, result.returncode, result.stdout, result.stderr))
 
+    def node_is_down(self, node):
+        if not healthcheck.client.ping(node):
+            logger.info("{} is down. Starting it...".format(node))
+            return True
+        return False
+
     def do_leader_tasks(self):
         logger.debug("Doing leader tasks")
         logger.debug("Checking if all nodes are alive...")
         for node in self.nodes:
-            if not healthcheck.client.ping(node):
-                logger.info("{} is down. Starting it...".format(node))
+            if self.node_is_down(node):
+                self.start_node(node)
+        for supervisor in self.supervisors:
+            if supervisor != self.id and self.node_is_down(node):
                 self.start_node(node)
 
     def do_non_leader_tasks(self):
