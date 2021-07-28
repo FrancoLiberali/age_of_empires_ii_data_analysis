@@ -91,7 +91,7 @@ class QueueInterface(RabbitMQInterface):
     REDUCER_ID_INDEX = 0
     SENTINEL_INDEX = -1
 
-    def __init__(self, rabbit_MQ_connection, name, last_hash_strategy=LastHashStrategy.ONE_LAST_HASH_SAVING):
+    def __init__(self, rabbit_MQ_connection, name, last_hash_strategy=LastHashStrategy.ONE_LAST_HASH_SAVING, private=False):
         RabbitMQInterface.__init__(self, rabbit_MQ_connection, name)
         self.last_hash_strategy = last_hash_strategy
         if self.last_hash_strategy != LastHashStrategy.NO_LAST_HASH_SAVING:
@@ -107,10 +107,16 @@ class QueueInterface(RabbitMQInterface):
                     name + ".txt"
                 )
             self.last_hash = self.last_hash_file.content
-
             logger.debug(
                     f"{self.name} - Initial last hash: {self.last_hash}")
-        self.channel.queue_declare(queue=self.name)
+        if not private:
+            self.channel.queue_declare(queue=self.name)
+
+    @classmethod
+    def newPrivate(cls, rabbit_MQ_connection):
+        result = rabbit_MQ_connection.channel.queue_declare(queue='')
+        private_queue_name = result.method.queue
+        return cls(rabbit_MQ_connection, private_queue_name, private=True)
 
     def bind(self, exchange, routing_key=None):
         self.channel.queue_bind(
