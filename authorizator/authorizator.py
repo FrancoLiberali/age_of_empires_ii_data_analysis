@@ -8,7 +8,7 @@ from communications.constants import LONG_MATCHES_TO_AUTHORIZATOR_QUEUE_NAME, \
     TOP_5_USED_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME, \
     WEAKER_WINNER_TO_AUTHORIZATOR_QUEUE_NAME, \
     WINNER_RATE_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME
-from communications.file import FileAlreadyExistError, ListFile, OneLineFile
+from communications.file import FileAlreadyExistError, ListFile, OneLineFile, safe_remove_file
 from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, RabbitMQConnection, split_rows_into_list
 import healthcheck.server
 from logger.logger import Logger
@@ -48,7 +48,7 @@ def with_lock(lock_file_name, function, *args):
                 datetime.datetime.now() - created_time
             ).total_seconds()
             if difference > MAX_LOCK_TIME_IN_SECONDS:
-                os.remove(lock_file_full_path)
+                safe_remove_file(lock_file_full_path)
             time.sleep(LOCK_LOCKED_SLEEP_TIME_IN_SECONDS)
             continue
 
