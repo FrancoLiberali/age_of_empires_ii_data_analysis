@@ -8,7 +8,7 @@ from communications.constants import LONG_MATCHES_TO_AUTHORIZATOR_QUEUE_NAME, \
     TOP_5_USED_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME, \
     WEAKER_WINNER_TO_AUTHORIZATOR_QUEUE_NAME, \
     WINNER_RATE_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME
-from communications.file import FileAlreadyExistError, ListFile, OneLineFile
+from communications.file import FileAlreadyExistError, ListFile, OneLineFile, safe_remove_file
 from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, RabbitMQConnection, split_rows_into_list
 import healthcheck.server
 from logger.logger import Logger
@@ -31,6 +31,8 @@ DATASET_TOKEN_LOCK_FILE_NAME = "dataset_token_lock.txt"
 OUTPUT_1_LOCK_FILE_NAME = "output1_lock.txt"
 OUTPUT_2_LOCK_FILE_NAME = "output2_lock.txt"
 
+LOCK_LOCKED_SLEEP_TIME_IN_SECONDS = 1
+
 def with_lock(lock_file_name, function, *args):
     lock_file_full_path = STORAGE_DIR + lock_file_name
     while (True):
@@ -41,11 +43,14 @@ def with_lock(lock_file_name, function, *args):
             break
         except FileAlreadyExistError:
             path = pathlib.Path(lock_file_full_path)
-            created_time = datetime.datetime.fromtimestamp(path.stat().st_mtime)
-            difference = (datetime.now() - created_time).total_seconds()
-            if difference > MAX_LOCK_TIME_IN_SECONDS:
-                os.remove(lock_file_full_path)
-            time.sleep(1)
+            if path.exists():
+                created_time = datetime.datetime.fromtimestamp(path.stat().st_mtime)
+                difference = (
+                    datetime.datetime.now() - created_time
+                ).total_seconds()
+                if difference > MAX_LOCK_TIME_IN_SECONDS:
+                    safe_remove_file(lock_file_full_path)
+            time.sleep(LOCK_LOCKED_SLEEP_TIME_IN_SECONDS)
             continue
 
 def with_dataset_token_lock(function, dataset_token):

@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from communications.file import BooleanFile, ListFile, ListOfJsonFile
+from communications.file import BooleanFile, ListFile, ListOfJsonFile, safe_remove_file
 from communications.rabbitmq_interface import SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR, split_columns_into_list, split_rows_into_list
 from config.envvars import BARRIER_QUEUE_NAME_KEY, OUTPUT_QUEUE_NAME_KEY, REDUCER_ID_KEY, get_config_param
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
@@ -67,10 +67,7 @@ def find_players_by_received_matches(matches_rows, players_by_match, matches):
 def add_matches_received(matches_file, new_matches_ids):
     matches_file.write(new_matches_ids)
     for match_id in new_matches_ids:
-        try:
-            os.remove(PLAYERS_STORAGE_DIR + match_id)
-        except FileNotFoundError:
-            pass
+        safe_remove_file(PLAYERS_STORAGE_DIR + match_id)
 
 
 def add_players_received(players_to_add):

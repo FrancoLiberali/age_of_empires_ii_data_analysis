@@ -1,6 +1,6 @@
 import os
 
-from communications.file import JsonFile, OneLineFile
+from communications.file import JsonFile, OneLineFile, safe_remove_file
 from config.envvars import REDUCERS_AMOUNT_KEY, REDUCERS_QUEUE_PREFIX_KEY, ROWS_CHUNK_SIZE_KEY, get_config_param
 from communications.constants import SENTINEL_KEY
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, SENTINEL_MESSAGE, SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR, split_columns_into_list
@@ -118,10 +118,7 @@ def receive_sentinels_stage(state_file, barrier_queue, reducers_output_queue, en
         state_file, reducers_output_queue, entry_queue)
 
 def delete_sentinels_received():
-    try:
-        os.remove(STATE_STORAGE_DIR + SENTINELS_RECEIVED_FILE_NAME)
-    except FileNotFoundError:
-        pass
+    safe_remove_file(STATE_STORAGE_DIR + SENTINELS_RECEIVED_FILE_NAME)
 
 def send_sentinel_with_master_id_and_last_hash(reducers_output_queue, entry_queue):
     reducers_output_queue.send_string(

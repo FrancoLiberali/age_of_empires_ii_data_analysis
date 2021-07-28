@@ -115,3 +115,9 @@ class ListOfJsonFile(ListFile):
         super().write(
             [json.dumps(list, ensure_ascii=True) for list in list_of_list]
         )
+
+def safe_remove_file(file_path):
+    try:
+        os.remove(file_path)
+    except FileNotFoundError:
+        pass
