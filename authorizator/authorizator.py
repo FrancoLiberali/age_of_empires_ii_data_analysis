@@ -43,12 +43,13 @@ def with_lock(lock_file_name, function, *args):
             break
         except FileAlreadyExistError:
             path = pathlib.Path(lock_file_full_path)
-            created_time = datetime.datetime.fromtimestamp(path.stat().st_mtime)
-            difference = (
-                datetime.datetime.now() - created_time
-            ).total_seconds()
-            if difference > MAX_LOCK_TIME_IN_SECONDS:
-                safe_remove_file(lock_file_full_path)
+            if path.exists():
+                created_time = datetime.datetime.fromtimestamp(path.stat().st_mtime)
+                difference = (
+                    datetime.datetime.now() - created_time
+                ).total_seconds()
+                if difference > MAX_LOCK_TIME_IN_SECONDS:
+                    safe_remove_file(lock_file_full_path)
             time.sleep(LOCK_LOCKED_SLEEP_TIME_IN_SECONDS)
             continue
 
