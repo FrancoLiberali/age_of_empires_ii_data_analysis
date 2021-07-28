@@ -79,7 +79,8 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             "./communications:/age_of_empires_ii_da/communications",
             "./config:/age_of_empires_ii_da/config",
             "./healthcheck:/age_of_empires_ii_da/healthcheck",
-            "./logger:/age_of_empires_ii_da/logger"
+            "./logger:/age_of_empires_ii_da/logger",
+            "../age_of_empires_servers_data/authorizator:/data"
         ],
         "entrypoint": "python3 /age_of_empires_ii_da/authorizator.py",
         "environment": [

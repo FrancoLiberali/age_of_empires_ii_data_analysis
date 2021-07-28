@@ -1,14 +1,22 @@
+import os
 import threading
 
 from communications.constants import LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
     TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME, \
     WEAKER_WINNER_TO_CLIENT_QUEUE_NAME, \
     WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
+from communications.file import ListFile
 from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, RabbitMQConnection, split_rows_into_list
 import healthcheck.server
 from logger.logger import Logger
 
 logger = Logger(True)
+
+STORAGE_DIR = "/data/"
+OUTPUT_1_FILE_NAME = "output1.txt"
+OUTPUT_2_FILE_NAME = "output2.txt"
+OUTPUT_3_FILE_NAME = "output3.txt"
+OUTPUT_4_FILE_NAME = "output4.txt"
 
 def get_receive_matches_ids_function(matches_ids, skip_header):
     # function currying in python
@@ -70,6 +78,11 @@ def receive_weaker_winner_matches_ids():
 def receive_winner_rate_of_all_civs(queue, received_string, _, __):
     logger.info("Porcentaje de victorias por civilización en partidas 1v1(ladder == RM_1v1) con civilizaciones diferentes en mapa arena son:")
     logger.info(received_string)
+    # TODO falta id de dataset
+    if not os.path.exists(STORAGE_DIR + OUTPUT_3_FILE_NAME):
+        output_3_file = ListFile(STORAGE_DIR, OUTPUT_3_FILE_NAME)
+        output_3_file.write(split_rows_into_list(received_string))
+        output_3_file.close()
     queue.stop_consuming()
 
 
@@ -86,6 +99,11 @@ def receive_winner_rate_by_civ():
 def receive_top_5_civs_used(queue, received_string, _, __):
     logger.info("Top 5 civilizaciones más usadas por pro players(rating > 2000) en team games (ladder == RM_TEAM) en mapa islands son: ")
     logger.info(received_string)
+    # TODO falta id de dataset
+    if not os.path.exists(STORAGE_DIR + OUTPUT_4_FILE_NAME):
+        output_4_file = ListFile(STORAGE_DIR, OUTPUT_4_FILE_NAME)
+        output_4_file.write(split_rows_into_list(received_string))
+        output_4_file.close()
     queue.stop_consuming()
 
 def receive_top_5_used_civs():
