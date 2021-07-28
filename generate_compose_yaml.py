@@ -535,7 +535,8 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     }
   
     with open("docker-compose-client-and-servers.yaml", "w") as file:
-        yaml.dump(compose_config, file, default_flow_style=False, Dumper=NoAliasDumper)
+        yaml.dump(compose_config, file, default_flow_style=False,
+                  sort_keys=False, Dumper=NoAliasDumper)
 
 if __name__ == '__main__':
     args = sys.argv
