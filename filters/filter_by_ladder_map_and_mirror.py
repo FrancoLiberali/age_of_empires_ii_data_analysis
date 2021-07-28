@@ -91,20 +91,19 @@ def main():
     output_team_exchage = ExchangeInterface.newDirect(
         connection, output_exchanges[OUTPUT_EXCHANGE_NAME_TEAM_KEY])
 
-    logger.info(
-        f'Starting to receive matches to filter by ladder, map and mirror')
-    input_queue.consume(
-        get_filter_by_ladder_map_and_mirror_function(
-            output_1v1_exchage,
-            output_team_exchage
-        ),
-        on_sentinel_callback=get_on_sentinel_callback_function(
-            output_1v1_exchage,
-            output_team_exchage
-        ),
-    )
-
-    connection.close()
+    while True:
+        logger.info(
+            f'Starting to receive matches to filter by ladder, map and mirror')
+        input_queue.consume(
+            get_filter_by_ladder_map_and_mirror_function(
+                output_1v1_exchage,
+                output_team_exchage
+            ),
+            on_sentinel_callback=get_on_sentinel_callback_function(
+                output_1v1_exchage,
+                output_team_exchage
+            ),
+        )
 
 
 if __name__ == '__main__':

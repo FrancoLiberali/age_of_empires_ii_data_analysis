@@ -50,16 +50,14 @@ def main():
         get_config_param(OUTPUT_EXCHANGE_NAME_KEY, logger)
     )
 
-    logger.info(
-        f'Starting to receive players to filter by rating > {MIN_RATING}')
-    input_queue.consume(
-        get_filter_by_rating_function(output_exchage),
-        on_sentinel_callback=get_on_sentinel_send_sentinel_callback_function(
-            output_exchage)
-    )
-
-    connection.close()
-
+    while True:
+        logger.info(
+            f'Starting to receive players to filter by rating > {MIN_RATING}')
+        input_queue.consume(
+            get_filter_by_rating_function(output_exchage),
+            on_sentinel_callback=get_on_sentinel_send_sentinel_callback_function(
+                output_exchage)
+        )
 
 if __name__ == '__main__':
     main()

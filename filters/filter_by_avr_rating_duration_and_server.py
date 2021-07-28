@@ -68,17 +68,18 @@ def main():
         LastHashStrategy.NO_LAST_HASH_SAVING
     )
     input_queue.bind(input_exchage)
-    
+
     output_queue = QueueInterface(
         connection, LONG_MATCHES_TO_AUTHORIZATOR_QUEUE_NAME)
 
-    logger.info('Starting to receive matches to filter')
-    input_queue.consume(
-        get_filter_by_duration_average_rating_and_server_function(output_queue),
-        on_sentinel_callback=get_on_sentinel_send_sentinel_callback_function(
-            output_queue)
-    )
-    connection.close()
+    while True:
+        logger.info('Starting to receive matches to filter')
+        input_queue.consume(
+            get_filter_by_duration_average_rating_and_server_function(output_queue),
+            on_sentinel_callback=get_on_sentinel_send_sentinel_callback_function(
+                output_queue
+            )
+        )
 
 if __name__ == '__main__':
     main()
