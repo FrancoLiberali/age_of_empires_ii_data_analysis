@@ -69,6 +69,28 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
 
     nodes_to_be_supervised = []
 
+    node = "authorizator"
+    nodes_to_be_supervised.append(node)
+    compose_config["services"][node] = {
+        "container_name": node,
+        "image": "rabbitmq-python-base:0.0.1",
+        "volumes": [
+            "./authorizator:/age_of_empires_ii_da",
+            "./communications:/age_of_empires_ii_da/communications",
+            "./config:/age_of_empires_ii_da/config",
+            "./healthcheck:/age_of_empires_ii_da/healthcheck",
+            "./logger:/age_of_empires_ii_da/logger"
+        ],
+        "entrypoint": "python3 /age_of_empires_ii_da/authorizator.py",
+        "environment": [
+            "TZ=America/Argentina/Buenos_Aires",
+            "RABBITMQ_HOST=rabbitmq",
+        ],
+        "networks": [
+            "age_of_empires_net"
+        ]
+    }
+
     node = "filter_by_avr_rating_duration_and_server"
     nodes_to_be_supervised.append(node)
     compose_config["services"][node] = {
