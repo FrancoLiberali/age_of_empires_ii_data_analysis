@@ -4,6 +4,7 @@ from communications.constants import FILTER_BY_RATING_QUEUE_NAME, FROM_CLIENT_PL
     FROM_CLIENT_PLAYER_RATING_INDEX, FROM_CLIENT_PLAYER_TOKEN_INDEX, \
     PLAYERS_FANOUT_EXCHANGE_NAME
 from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, RabbitMQConnection, get_on_sentinel_send_sentinel_callback_function, split_columns_into_list, split_rows_into_list
+import healthcheck.server
 from logger.logger import Logger
 
 logger = Logger()
@@ -33,6 +34,7 @@ def get_filter_by_rating_function(output_exchange):
 
 
 def main():
+    healthcheck.server.start_in_new_process()
     connection = RabbitMQConnection()
     input_exchage = ExchangeInterface.newFanout(
         connection, PLAYERS_FANOUT_EXCHANGE_NAME)

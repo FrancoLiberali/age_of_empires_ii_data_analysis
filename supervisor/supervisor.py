@@ -1,16 +1,16 @@
-from config.envvars import get_config_param
 import multiprocessing
-import healthcheck.server
+import queue
+import subprocess
+import time
+
+from config.envvars import get_config_param
 import healthcheck.client
+import healthcheck.server
 import ring.server
 import ring.client
-import queue
-import time
-import subprocess
 from logger.logger import Logger
 
-
-TASK_INTERVAL=4
+TASK_INTERVAL = 4
 logger = Logger()
 
 class Supervisor:
@@ -20,10 +20,10 @@ class Supervisor:
         self.nodes = nodes
         self.leader = None
         self.leader_queue = multiprocessing.Queue()
-        
+
 
     def wait_for_leader(self):
-        while self.leader == None:            
+        while self.leader == None:
             self.leader = self.leader_queue.get()
             if self.leader != None:
                 if self.leader == self.id:
@@ -32,7 +32,7 @@ class Supervisor:
                     logger.info(f"New leader elected: {self.leader}")
             else:
                 logger.debug("Leader = {}".format(self.leader))
-    
+
     def start_election(self):
         logger.info(f"Starting election...")
         if ring.client.start_election(self.id, self.supervisors):
@@ -54,13 +54,13 @@ class Supervisor:
 
     def do_leader_tasks(self):
         logger.debug("Doing leader tasks")
-        logger.debug("Checking if all nodes are alive...")
+        logger.debug(f"Checking if all nodes are alive: {self.nodes}")
         for node in self.nodes:
             if self.node_is_down(node):
                 self.start_node(node)
         for supervisor in self.supervisors:
-            if supervisor != self.id and self.node_is_down(node):
-                self.start_node(node)
+            if supervisor != self.id and self.node_is_down(supervisor):
+                self.start_node(supervisor)
 
     def do_non_leader_tasks(self):
         logger.debug("Doing non leader tasks")
@@ -78,9 +78,8 @@ class Supervisor:
             logger.debug("Leader did not change")
 
     def run(self):
-        ping_server = multiprocessing.Process(target=healthcheck.server.run)        
+        healthcheck.server.start_in_new_process()
         election_server = multiprocessing.Process(target=ring.server.run, args=(self.id, self.supervisors, self.leader_queue))
-        ping_server.start()
         election_server.start()
         time.sleep(2)
         self.start_election()
@@ -94,11 +93,11 @@ class Supervisor:
 
 
 def main():
-    hostname=get_config_param("SUPERVISOR_NAME", logger)
-    supervisors=get_config_param("SUPERVISORS", logger).split(',')
-    nodes=get_config_param("NODES", logger).split(',')
+    hostname = get_config_param("SUPERVISOR_NAME", logger)
+    supervisors = get_config_param("SUPERVISORS", logger).split(',')
+    nodes = get_config_param("NODES", logger).split(',')
     supervisor = Supervisor(hostname, supervisors, nodes)
-    supervisor.run()  
+    supervisor.run()
 
 if __name__ == '__main__':
     main()

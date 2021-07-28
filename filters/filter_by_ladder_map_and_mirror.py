@@ -4,6 +4,7 @@ from communications.constants import FILTER_BY_LADDER_MAP_AND_MIRROR_QUEUE_NAME,
     FROM_CLIENT_MATCH_TOKEN_INDEX, \
     MATCHES_FANOUT_EXCHANGE_NAME
 from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, RabbitMQConnection, split_columns_into_list, split_rows_into_list
+import healthcheck.server
 from logger.logger import Logger
 
 logger = Logger()
@@ -68,6 +69,7 @@ def get_filter_by_ladder_map_and_mirror_function(output_1v1_exchage, output_team
 
 
 def main():
+    healthcheck.server.start_in_new_process()
     output_exchanges = get_config_params([
         OUTPUT_EXCHANGE_NAME_1V1_KEY,
         OUTPUT_EXCHANGE_NAME_TEAM_KEY,

@@ -1,7 +1,9 @@
 import os
+
 from communications.file import JsonFile, OneLineFile
 from config.envvars import INPUT_QUEUE_NAME_KEY, get_config_param
 from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, RabbitMQConnection
+import healthcheck.server
 from logger.logger import Logger
 
 logger = Logger()
@@ -59,6 +61,7 @@ def main_civ_calculator(
         output_queue_name,
         get_receive_data_function,
         calculate_function):
+    healthcheck.server.start_in_new_process()
     connection = RabbitMQConnection()
     input_queue = QueueInterface(
         connection,

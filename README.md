@@ -12,11 +12,17 @@ Sistema distribuidos que procesa el detalle de partidas jugadas en el videojuego
 
 2. Agregar los datasets de entrada en una carpeta llamada datasets en la raíz de este proyecto. Los datasets de ejemplo se encuentran en https://www.kaggle.com/ezetowers/aoe2-tp2-draft/data.
 
-3. Levantar el proyecto
+3. Instalar requisitos del sistema
 
 	```bash
 	cd ..
-	./start_up.sh n1 n2 n3 n4 n5
+	sudo ./install_requirements.sh
+	```
+
+4. Levantar el proyecto
+
+	```bash
+	./start_up.sh n1 n2 n3 n4 n5 n6
 	```
 
 	* n1: Cantidad de group by match reducer
@@ -24,8 +30,9 @@ Sistema distribuidos que procesa el detalle de partidas jugadas en el videojuego
 	* n3: Cantidad group players of matches by civ reducer 1v1
 	* n4: Cantidad de join matches and players reducer team
 	* n5: Cantidad group players of matches by civ reducer team
+	* n6: Cantidad de supervisores
 
-4. Al terminar la ejecución las salidas estarán impresas en la pantalla junto al resto de logs. Para ver solo las salidas usar
+5. Al terminar la ejecución las salidas estarán impresas en la pantalla junto al resto de logs. Para ver solo las salidas usar
 
 	```bash
 	./watch_results.sh
@@ -37,7 +44,7 @@ Sistema distribuidos que procesa el detalle de partidas jugadas en el videojuego
 	* winner_rate_by_civ_results.txt
 	* top5_civs_results.txt
 
-5. Para eliminar los containers de docker creados:
+6. Para eliminar los containers de docker creados:
 
 	```bash
 	./stop_all.sh

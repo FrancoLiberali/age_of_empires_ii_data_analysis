@@ -3,6 +3,7 @@ from more_itertools import first_true
 from communications.constants import FROM_CLIENT_PLAYER_TOKEN_INDEX
 from config.envvars import INPUT_QUEUE_NAME_KEY, REDUCER_ID_KEY, get_config_param
 from communications.rabbitmq_interface import QueueInterface, RabbitMQConnection, SENTINEL_MESSAGE, SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR
+import healthcheck.server
 from logger.logger import Logger
 
 
@@ -25,6 +26,7 @@ def main_reducer(
         output_queue_name,
         receive_and_reduce_function
     ):
+    healthcheck.server.start_in_new_process()
     logger = Logger()
     connection = RabbitMQConnection()
 

@@ -1,20 +1,22 @@
-from logger.logger import Logger
-from socketserver import TCPServer
-import socketserver
+import multiprocessing
 import socket
+import socketserver
+from socketserver import TCPServer
+
+from logger.logger import Logger
 
 RECV=b'PING!'
 SEND=b'PONG!'
-PORT=9999
-HOST=''
 
-logger=Logger()
+PORT = 9999
+HOST = ''
+
+logger = Logger()
 
 class PingHandler(socketserver.BaseRequestHandler):
-
     def handle(self):
         data=b''
-        try:            
+        try:
             while len(data) < len(RECV):
                 data += self.request.recv(len(RECV) - len(data))
                 logger.debug("Server Receive: data={} len(data)={}".format(data, len(data)))
@@ -35,4 +37,7 @@ def run():
         logger.info(f"Health Check Server started")
         server.serve_forever()
 
-    
+def start_in_new_process():
+    ping_server = multiprocessing.Process(target=run)
+    ping_server.start()
+    return ping_server
