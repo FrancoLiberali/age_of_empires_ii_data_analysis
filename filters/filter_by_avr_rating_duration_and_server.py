@@ -9,6 +9,7 @@ from communications.constants import FILTER_BY_AVR_RATING_DURATION_AND_SERVER_IN
     MATCHES_FANOUT_EXCHANGE_NAME, \
     LONG_MATCHES_TO_CLIENT_QUEUE_NAME
 from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, RabbitMQConnection, get_on_sentinel_send_sentinel_callback_function, split_columns_into_list, split_rows_into_list
+import healthcheck.server
 from logger.logger import Logger
 
 logger = Logger()
@@ -57,6 +58,7 @@ def get_filter_by_duration_average_rating_and_server_function(output_queue):
     return filter_by_duration_average_rating_and_server
 
 def main():
+    healthcheck.server.start_in_new_process()
     connection = RabbitMQConnection()
     input_exchage = ExchangeInterface.newFanout(
         connection, MATCHES_FANOUT_EXCHANGE_NAME)

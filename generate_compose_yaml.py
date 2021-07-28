@@ -78,6 +78,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             "./filters:/age_of_empires_ii_da",
             "./communications:/age_of_empires_ii_da/communications",
             "./config:/age_of_empires_ii_da/config",
+            "./healthcheck:/age_of_empires_ii_da/healthcheck",
             "./logger:/age_of_empires_ii_da/logger"
         ],
         "entrypoint": "python3 /age_of_empires_ii_da/filter_by_avr_rating_duration_and_server.py",
@@ -105,6 +106,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             "./filters:/age_of_empires_ii_da",
             "./communications:/age_of_empires_ii_da/communications",
             "./config:/age_of_empires_ii_da/config",
+            "./healthcheck:/age_of_empires_ii_da/healthcheck",
             "./logger:/age_of_empires_ii_da/logger"
         ],
         "entrypoint": "python3 /age_of_empires_ii_da/filter_by_rating.py",
@@ -131,6 +133,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             "./filters:/age_of_empires_ii_da",
             "./communications:/age_of_empires_ii_da/communications",
             "./config:/age_of_empires_ii_da/config",
+            "./healthcheck:/age_of_empires_ii_da/healthcheck",
             "./logger:/age_of_empires_ii_da/logger"
         ],
         "entrypoint": "python3 /age_of_empires_ii_da/filter_by_ladder_map_and_mirror.py",
@@ -160,6 +163,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             "./communications:/age_of_empires_ii_da/communications",
             "./master_reducers_arq:/age_of_empires_ii_da/master_reducers_arq",
             "./config:/age_of_empires_ii_da/config",
+            "./healthcheck:/age_of_empires_ii_da/healthcheck",
             "./logger:/age_of_empires_ii_da/logger"
         ],
         "entrypoint": "python3 /age_of_empires_ii_da/master.py",
@@ -185,6 +189,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             "./communications:/join_matches_and_players/communications",
             "./master_reducers_arq:/join_matches_and_players/master_reducers_arq",
             "./config:/join_matches_and_players/config",
+            "./healthcheck:/join_matches_and_players/healthcheck",
             "./logger:/join_matches_and_players/logger",
             "../age_of_empires_servers_data/join_master_1v1:/data"
         ],
@@ -218,6 +223,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             "./communications:/join_matches_and_players/communications",
             "./master_reducers_arq:/join_matches_and_players/master_reducers_arq",
             "./config:/join_matches_and_players/config",
+            "./healthcheck:/join_matches_and_players/healthcheck",
             "./logger:/join_matches_and_players/logger"
         ],
         "entrypoint": "python3 /join_matches_and_players/master.py",
@@ -249,6 +255,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             "./communications:/group_by_civ/communications",
             "./master_reducers_arq:/group_by_civ/master_reducers_arq",
             "./config:/group_by_civ/config",
+            "./healthcheck:/group_by_civ/healthcheck",
             "./logger:/group_by_civ/logger"
         ],
         "entrypoint": "python3 /group_by_civ/master.py",
@@ -278,6 +285,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             "./communications:/group_by_civ/communications",
             "./master_reducers_arq:/group_by_civ/master_reducers_arq",
             "./config:/group_by_civ/config",
+            "./healthcheck:/group_by_civ/healthcheck",
             "./logger:/group_by_civ/logger"
         ],
         "entrypoint": "python3 /group_by_civ/master.py",
@@ -306,6 +314,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             "./civs_calculators:/winner_rate_calculator",
             "./communications:/winner_rate_calculator/communications",
             "./config:/winner_rate_calculator/config",
+            "./healthcheck:/winner_rate_calculator/healthcheck",
             "./logger:/winner_rate_calculator/logger"
         ],
         "entrypoint": "python3 /winner_rate_calculator/winner_rate_calculator.py",
@@ -328,6 +337,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             "./civs_calculators:/top_5_times_used_calculator",
             "./communications:/top_5_times_used_calculator/communications",
             "./config:/top_5_times_used_calculator/config",
+            "./healthcheck:/top_5_times_used_calculator/healthcheck",
             "./logger:/top_5_times_used_calculator/logger"
         ],
         "entrypoint": "python3 /top_5_times_used_calculator/top_5_times_used_calculator.py",
@@ -353,6 +363,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
                 "./master_reducers_arq:/age_of_empires_ii_da/master_reducers_arq",
                 "./config:/age_of_empires_ii_da/config",
                 "./logger:/age_of_empires_ii_da/logger",
+                "./healthcheck:/age_of_empires_ii_da/healthcheck",
                 "../age_of_empires_servers_data/" + node + ":/data",
             ],
             "entrypoint": "python3 /age_of_empires_ii_da/reducer.py",
@@ -381,6 +392,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
                 "./communications:/group_by_civ/communications",
                 "./master_reducers_arq:/group_by_civ/master_reducers_arq",
                 "./config:/group_by_civ/config",
+                "./healthcheck:/group_by_civ/healthcheck",
                 "./logger:/group_by_civ/logger"
             ],
             "entrypoint": "python3 /group_by_civ/count_wins_and_defeats_reducer.py",
@@ -409,6 +421,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
                 "./communications:/group_by_civ/communications",
                 "./master_reducers_arq:/group_by_civ/master_reducers_arq",
                 "./config:/group_by_civ/config",
+                "./healthcheck:/group_by_civ/healthcheck",
                 "./logger:/group_by_civ/logger"
             ],
             "entrypoint": "python3 /group_by_civ/count_times_used_reducer.py",
@@ -437,6 +450,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
                 "./communications:/join_matches_and_players/communications",
                 "./master_reducers_arq:/join_matches_and_players/master_reducers_arq",
                 "./config:/join_matches_and_players/config",
+                "./healthcheck:/join_matches_and_players/healthcheck",
                 "./logger:/join_matches_and_players/logger",
                 "../age_of_empires_servers_data/" + node + ":/data"
             ],
@@ -466,6 +480,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
                 "./communications:/join_matches_and_players/communications",
                 "./master_reducers_arq:/join_matches_and_players/master_reducers_arq",
                 "./config:/join_matches_and_players/config",
+                "./healthcheck:/join_matches_and_players/healthcheck",
                 "./logger:/join_matches_and_players/logger"
             ],
             "entrypoint": "python3 /join_matches_and_players/reducer.py",

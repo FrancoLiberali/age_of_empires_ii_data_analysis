@@ -1,2 +1,0 @@
-SEND = b'PING!'
-RECV = b'PONG!'

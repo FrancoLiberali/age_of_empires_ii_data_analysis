@@ -1,9 +1,12 @@
+import multiprocessing
 import socket
 import socketserver
 from socketserver import TCPServer
 
-from healthcheck.constants import SEND, RECV
 from logger.logger import Logger
+
+RECV=b'PING!'
+SEND=b'PONG!'
 
 PORT = 9999
 HOST = ''
@@ -33,3 +36,8 @@ def run():
     with TCPServer((HOST, PORT), PingHandler) as server:
         logger.info(f"Health Check Server started")
         server.serve_forever()
+
+def start_in_new_process():
+    ping_server = multiprocessing.Process(target=run)
+    ping_server.start()
+    return ping_server

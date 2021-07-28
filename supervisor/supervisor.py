@@ -54,13 +54,13 @@ class Supervisor:
 
     def do_leader_tasks(self):
         logger.debug("Doing leader tasks")
-        logger.debug("Checking if all nodes are alive...")
+        logger.debug(f"Checking if all nodes are alive: {self.nodes}")
         for node in self.nodes:
             if self.node_is_down(node):
                 self.start_node(node)
         for supervisor in self.supervisors:
-            if supervisor != self.id and self.node_is_down(node):
-                self.start_node(node)
+            if supervisor != self.id and self.node_is_down(supervisor):
+                self.start_node(supervisor)
 
     def do_non_leader_tasks(self):
         logger.debug("Doing non leader tasks")
@@ -78,9 +78,8 @@ class Supervisor:
             logger.debug("Leader did not change")
 
     def run(self):
-        ping_server = multiprocessing.Process(target=healthcheck.server.run)        
+        healthcheck.server.start_in_new_process()
         election_server = multiprocessing.Process(target=ring.server.run, args=(self.id, self.supervisors, self.leader_queue))
-        ping_server.start()
         election_server.start()
         time.sleep(2)
         self.start_election()
@@ -94,9 +93,9 @@ class Supervisor:
 
 
 def main():
-    hostname=get_config_param("SUPERVISOR_NAME", logger)
-    supervisors=get_config_param("SUPERVISORS", logger).split(',')
-    nodes=get_config_param("NODES", logger).split(',')
+    hostname = get_config_param("SUPERVISOR_NAME", logger)
+    supervisors = get_config_param("SUPERVISORS", logger).split(',')
+    nodes = get_config_param("NODES", logger).split(',')
     supervisor = Supervisor(hostname, supervisors, nodes)
     supervisor.run()
 

@@ -1,8 +1,10 @@
 import os
+
 from communications.file import JsonFile, OneLineFile
 from config.envvars import REDUCERS_AMOUNT_KEY, REDUCERS_QUEUE_PREFIX_KEY, ROWS_CHUNK_SIZE_KEY, get_config_param
 from communications.constants import SENTINEL_KEY
 from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, SENTINEL_MESSAGE, SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR, split_columns_into_list
+import healthcheck.server
 from logger.logger import Logger
 from master_reducers_arq.partition_function import PartitionFunction
 
@@ -138,6 +140,7 @@ def main_master(
         subscribe_to_entries_function,
         receive_and_dispach_function
     ):
+    healthcheck.server.start_in_new_process()
     connection = RabbitMQConnection()
 
     entry_queue = subscribe_to_entries_function(connection)
