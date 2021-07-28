@@ -11,6 +11,18 @@ from master_reducers_arq.partition_function import PartitionFunction
 logger = Logger()
 ROWS_CHUNK_SIZE = get_config_param(ROWS_CHUNK_SIZE_KEY, logger)
 
+MASTER_ID = "master"
+
+STATE_STORAGE_DIR = "/data/"
+
+SENTINELS_RECEIVED_FILE_NAME = "sentinels.json"
+SENTINEL_RECEIVED = 1
+
+STATE_FILE_NAME = "state.txt"
+STATE_CONFIGURING_QUEUES = "STATE_CONFIGURING_QUEUES"
+STATE_DISPACHING = "STATE_DISPACHING"
+STATE_RECEIVING_SENTINELS = "STATE_RECEIVING_SENTINELS"
+
 def send_sentinel_to_reducers(output_exchage):
     logger.info("Sending sentinel to reducers for alerting them than no more data will be sended.")
     output_exchage.send_sentinel(SENTINEL_KEY)
@@ -41,10 +53,6 @@ def add_to_dict_by_key(output_exchange,
     # TODO sacar el check_chunk_size=False para volver a poner la optimizacion de chunks si queda tiempo
     send_dict_by_key(output_exchange, dict_by_key, tag_to_send=tag_to_send, check_chunk_size=False)
 
-RECEIVED = 1
-STATE_STORAGE_DIR = "/data/"
-SENTINELS_RECEIVED_FILE_NAME = "sentinels.json"
-STATE_FILE_NAME = "state.txt"
 
 def get_receive_sentinel_function(sentinels_objetive):
     # python function currying
@@ -55,7 +63,7 @@ def get_receive_sentinel_function(sentinels_objetive):
     logger.debug(f"Initial reducers sentinels received: {len(reducers_map.keys())}")
     def on_sentinel_callback(reducer_id, _):
         if reducers_map.get(reducer_id, None) is None:
-            reducers_map[reducer_id] = RECEIVED
+            reducers_map[reducer_id] = SENTINEL_RECEIVED
             sentinels_received_file.write(reducers_map)
         sentinel_received_amount = len(reducers_map.keys())
         logger.info(
@@ -115,23 +123,10 @@ def delete_sentinels_received():
     except FileNotFoundError:
         pass
 
-
-def dispach_stage(receive_and_dispach_function, entry_queue, output_exchage, partition_function, state_file,
-                  barrier_queue, reducers_output_queue, reducers_amount):
-    receive_and_dispach_function(
-        entry_queue,
-        output_exchage,
-        partition_function,
-        state_file
+def send_sentinel_with_master_id_and_last_hash(reducers_output_queue, entry_queue):
+    reducers_output_queue.send_string(
+        f"{MASTER_ID}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}{entry_queue.last_hash}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}{SENTINEL_MESSAGE}"
     )
-
-    receive_sentinels_stage(
-        state_file, barrier_queue, reducers_output_queue, entry_queue, reducers_amount)
-
-
-STATE_CONFIGURING_QUEUES = "STATE_CONFIGURING_QUEUES"
-STATE_DISPACHING = "STATE_DISPACHING"
-STATE_RECEIVING_SENTINELS = "STATE_RECEIVING_SENTINELS"
 
 def main_master(
         barrier_queue_name,
@@ -159,8 +154,8 @@ def main_master(
         STATE_STORAGE_DIR, STATE_FILE_NAME
     )
     state = state_file.content or STATE_CONFIGURING_QUEUES
+    logger.info(f"Initial state: {state}")
     if state == STATE_CONFIGURING_QUEUES:
-        logger.debug("Init at config queues")
         subscribe_reducers_queues_to_keys(
             connection,
             output_exchage,
@@ -169,14 +164,6 @@ def main_master(
         )
         state_file.write(STATE_DISPACHING)
         logger.info("Finished reducers queues configuration")
-        dispach_stage(receive_and_dispach_function, entry_queue, output_exchage, partition_function, state_file,
-                      barrier_queue, reducers_output_queue, reducers_amount)
-    elif state == STATE_DISPACHING:
-        # TODO cuando haya loop al entrar hacer sentinels_received_file.write({})
-        logger.debug("Init at dispaching")
-        delete_sentinels_received()
-        dispach_stage(receive_and_dispach_function, entry_queue, output_exchage, partition_function, state_file,
-                      barrier_queue, reducers_output_queue, reducers_amount)
     elif state == STATE_RECEIVING_SENTINELS:
         logger.debug("Init at receiving sentinels")
         entry_queue.set_last_hash(SENTINEL_MESSAGE)
@@ -189,14 +176,18 @@ def main_master(
             send_sentinel_and_go_to_dispaching()
         else:
             receive_sentinels_stage(
-                state_file, barrier_queue, reducers_output_queue, entry_queue, reducers_amount)
-
-    state_file.close()
-    connection.close()
-
-MASTER_ID = "master"
-
-def send_sentinel_with_master_id_and_last_hash(reducers_output_queue, entry_queue):
-    reducers_output_queue.send_string(
-        f"{MASTER_ID}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}{entry_queue.last_hash}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}{SENTINEL_MESSAGE}"
-    )
+                state_file, barrier_queue, reducers_output_queue,
+                entry_queue, reducers_amount
+            )
+    while True:
+        delete_sentinels_received()
+        receive_and_dispach_function(
+            entry_queue,
+            output_exchage,
+            partition_function,
+            state_file
+        )
+        receive_sentinels_stage(
+            state_file, barrier_queue, reducers_output_queue,
+            entry_queue, reducers_amount
+        )

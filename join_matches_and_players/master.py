@@ -1,13 +1,13 @@
-from communications.file import JsonFile, OneLineFile
-from config.envvars import BARRIER_QUEUE_NAME_KEY, INPUT_QUEUE_NAME_KEY, MATCHES_INPUT_EXCHANGE_NAME_KEY, OUTPUT_EXCHANGE_NAME_KEY, PLAYERS_INPUT_EXCHANGE_NAME_KEY, REDUCERS_OUTPUT_QUEUE_NAME_KEY, ROWS_CHUNK_SIZE_KEY, get_config_param
+from communications.file import JsonFile
+from config.envvars import BARRIER_QUEUE_NAME_KEY, INPUT_QUEUE_NAME_KEY, MATCHES_INPUT_EXCHANGE_NAME_KEY, OUTPUT_EXCHANGE_NAME_KEY, PLAYERS_INPUT_EXCHANGE_NAME_KEY, REDUCERS_OUTPUT_QUEUE_NAME_KEY, get_config_param
 from communications.constants import FROM_CLIENT_MATCH_TOKEN_INDEX, \
     FROM_CLIENT_PLAYER_MATCH_INDEX, \
     JOIN_TO_REDUCERS_MATCHES_IDENTIFICATOR, \
     JOIN_TO_REDUCERS_PLAYERS_IDENTIFICATOR, \
     MATCHES_KEY, MATCHES_SENTINEL, \
     PLAYERS_KEY, SENTINEL_KEY
-from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, split_columns_into_list, split_rows_into_list
-from master_reducers_arq.master import RECEIVED, STATE_RECEIVING_SENTINELS, STATE_STORAGE_DIR, add_to_dict_by_key, main_master, send_dict_by_key, send_sentinel_to_reducers
+from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, split_rows_into_list
+from master_reducers_arq.master import SENTINEL_RECEIVED, STATE_RECEIVING_SENTINELS, STATE_STORAGE_DIR, add_to_dict_by_key, main_master, send_sentinel_to_reducers
 from logger.logger import Logger
 
 logger = Logger()
@@ -23,7 +23,7 @@ def get_on_sentinel_callback_function(output_exchange, players_by_key, matches_b
         f"Initial entry sentinels received: {len(entries_map.keys())}")
     def on_sentinel_callback(_, routing_key):
         if entries_map.get(routing_key, None) is None:
-            entries_map[routing_key] = RECEIVED
+            entries_map[routing_key] = SENTINEL_RECEIVED
             sentinels_received_file.write(entries_map)
 
         sentinels_count = len(entries_map.keys())
