@@ -7,7 +7,7 @@ from communications.constants import FILTER_BY_AVR_RATING_DURATION_AND_SERVER_IN
     FROM_CLIENT_MATCH_SERVER_INDEX, \
     FROM_CLIENT_MATCH_TOKEN_INDEX, \
     MATCHES_FANOUT_EXCHANGE_NAME, \
-    LONG_MATCHES_TO_CLIENT_QUEUE_NAME
+    LONG_MATCHES_TO_AUTHORIZATOR_QUEUE_NAME
 from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, RabbitMQConnection, get_on_sentinel_send_sentinel_callback_function, split_columns_into_list, split_rows_into_list
 import healthcheck.server
 from logger.logger import Logger
@@ -70,7 +70,7 @@ def main():
     input_queue.bind(input_exchage)
     
     output_queue = QueueInterface(
-        connection, LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
+        connection, LONG_MATCHES_TO_AUTHORIZATOR_QUEUE_NAME)
 
     logger.info('Starting to receive matches to filter')
     input_queue.consume(

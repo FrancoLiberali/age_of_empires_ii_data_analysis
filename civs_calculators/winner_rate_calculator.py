@@ -1,5 +1,5 @@
 from civs_calculators_arq.civ_calculator import main_civ_calculator, write_to_new_data
-from communications.constants import WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
+from communications.constants import WINNER_RATE_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME
 from communications.rabbitmq_interface import split_columns_into_list, split_rows_into_list
 
 FROM_GROUP_BY_CIV_CIV_INDEX = 0
@@ -36,7 +36,7 @@ def calculate_winner_rate(logger, wins_and_defeats_by_civ):
 
 def main():
     main_civ_calculator(
-        WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME,
+        WINNER_RATE_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME,
         get_group_wins_and_defeats_by_civ_function,
         calculate_winner_rate
     )

@@ -1,5 +1,5 @@
 from civs_calculators_arq.civ_calculator import main_civ_calculator, write_to_new_data
-from communications.constants import TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME
+from communications.constants import TOP_5_USED_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME
 from communications.rabbitmq_interface import split_columns_into_list, split_rows_into_list
 
 FROM_GROUP_BY_CIV_CIV_INDEX = 0
@@ -45,7 +45,7 @@ def calculate_top_5(logger, times_used_by_civ):
 
 def main():
     main_civ_calculator(
-        TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME,
+        TOP_5_USED_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME,
         get_group_times_used_by_civ_function,
         calculate_top_5
     )

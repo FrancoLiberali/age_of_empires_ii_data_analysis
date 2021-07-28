@@ -4,10 +4,10 @@ import pathlib
 import threading
 import time
 
-from communications.constants import LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
-    TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME, \
-    WEAKER_WINNER_TO_CLIENT_QUEUE_NAME, \
-    WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME
+from communications.constants import LONG_MATCHES_TO_AUTHORIZATOR_QUEUE_NAME, \
+    TOP_5_USED_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME, \
+    WEAKER_WINNER_TO_AUTHORIZATOR_QUEUE_NAME, \
+    WINNER_RATE_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME
 from communications.file import FileAlreadyExistError, ListFile, OneLineFile
 from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, RabbitMQConnection, split_rows_into_list
 import healthcheck.server
@@ -150,7 +150,7 @@ def get_matches_ids(
 def receive_long_matches_ids(dataset_token):
     connection = RabbitMQConnection()
     queue = QueueInterface(
-        connection, LONG_MATCHES_TO_CLIENT_QUEUE_NAME)
+        connection, LONG_MATCHES_TO_AUTHORIZATOR_QUEUE_NAME)
 
     logger.info("Starting to receive ids of long matches replied")
     get_matches_ids(
@@ -168,7 +168,7 @@ def receive_weaker_winner_matches_ids(dataset_token):
     connection = RabbitMQConnection()
     queue = QueueInterface(
         connection,
-        WEAKER_WINNER_TO_CLIENT_QUEUE_NAME,
+        WEAKER_WINNER_TO_AUTHORIZATOR_QUEUE_NAME,
         last_hash_strategy=LastHashStrategy.LAST_HASH_PER_REDUCER_ID
     )
 
@@ -207,7 +207,7 @@ def get_receive_winner_rate_of_all_civs_function(dataset_token):
 def receive_winner_rate_by_civ(dataset_token):
     connection = RabbitMQConnection()
     queue = QueueInterface(
-        connection, WINNER_RATE_CALCULATOR_TO_CLIENT_QUEUE_NAME)
+        connection, WINNER_RATE_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME)
 
     logger.info("Starting to receive to winner rate by civ replied")
     queue.consume(get_receive_winner_rate_of_all_civs_function(dataset_token))
@@ -235,7 +235,7 @@ def get_receive_top_5_civs_used_function(dataset_token):
 def receive_top_5_used_civs(dataset_token):
     connection = RabbitMQConnection()
     queue = QueueInterface(
-        connection, TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME)
+        connection, TOP_5_USED_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME)
 
     logger.info("Starting to receive to top 5 civs used replied")
     queue.consume(get_receive_top_5_civs_used_function(dataset_token))
