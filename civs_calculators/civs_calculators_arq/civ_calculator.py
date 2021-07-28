@@ -15,6 +15,12 @@ STORAGE_DIR = "/data/"
 DATA_STORAGE_DIR = STORAGE_DIR + "data_dict/"
 DATA_FILE_NAME = "data_dict.json"
 
+MASTER_SENTINEL_FILE_NAME = "master_sentinel.txt"
+STATE_FILE_NAME = "state.txt"
+
+STATE_RECEIVING = "STATE_RECEIVING"
+STATE_CALCULATING = "STATE_CALCULATING"
+
 def write_to_new_data(times_used_by_civ, actual_hash):
     files_list = os.listdir(DATA_STORAGE_DIR)
     if len(files_list) <= ONLY_STATE:
@@ -57,6 +63,38 @@ def write_dict(file_name, dict):
 def clear_data_dict():
     write_dict(DATA_FILE_NAME, {})
 
+def calculate_stage(calculate_function, data_dict, output_queue):
+    if len(data_dict.keys()):
+        list_of_columns = calculate_function(logger, data_dict)
+        logger.info("Sending results to output")
+        output_queue.send_list_of_columns(list_of_columns)
+        clear_data_dict()
+    write_state(STATE_RECEIVING)
+
+
+def on_sentinel_callback(_, __):
+    write_state(STATE_CALCULATING)
+
+
+def get_state():
+    state_file = OneLineFile(
+        STORAGE_DIR,
+        STATE_FILE_NAME
+    )
+    state = state_file.content or STATE_RECEIVING
+    state_file.close()
+    return state
+
+
+def write_state(state):
+    state_file = OneLineFile(
+        STORAGE_DIR,
+        STATE_FILE_NAME,
+        read_content=False
+    )
+    state_file.write(state)
+    state_file.close()
+
 def main_civ_calculator(
         output_queue_name,
         get_receive_data_function,
@@ -78,8 +116,11 @@ def main_civ_calculator(
     initial_state = get_state()
     logger.debug(f'Initial state: {initial_state}')
     logger.debug(f'Initial data size: {len(data_dict.keys())}')
-    
-    if initial_state == STATE_RECEIVING:
+
+    if initial_state == STATE_CALCULATING:
+        calculate_stage(calculate_function, data_dict, output_queue)
+
+    while True:
         logger.info('Starting to receive data')
         input_queue.consume(
             get_receive_data_function(
@@ -89,42 +130,4 @@ def main_civ_calculator(
             on_sentinel_callback=on_sentinel_callback
         )
         calculate_stage(calculate_function, data_dict, output_queue)
-    elif initial_state == STATE_CALCULATING:
-        calculate_stage()
     connection.close()
-
-MASTER_SENTINEL_FILE_NAME = "master_sentinel.txt"
-STATE_FILE_NAME = "state.txt"
-
-STATE_RECEIVING = "STATE_RECEIVING"
-STATE_CALCULATING = "STATE_CALCULATING"
-
-
-def calculate_stage(calculate_function, data_dict, output_queue):
-    if len(data_dict.keys()):
-        list_of_columns = calculate_function(logger, data_dict)
-        output_queue.send_list_of_columns(list_of_columns)
-        clear_data_dict()
-    write_state(STATE_RECEIVING)
-
-def on_sentinel_callback(_, __):
-    write_state(STATE_CALCULATING)
-
-def get_state():
-    state_file = OneLineFile(
-        STORAGE_DIR,
-        STATE_FILE_NAME
-    )
-    state = state_file.content or STATE_RECEIVING
-    state_file.close()
-    return state
-
-
-def write_state(state):
-    state_file = OneLineFile(
-        STORAGE_DIR,
-        STATE_FILE_NAME,
-        read_content=False
-    )
-    state_file.write(state)
-    state_file.close()
