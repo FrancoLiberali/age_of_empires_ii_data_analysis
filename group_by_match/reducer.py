@@ -87,9 +87,10 @@ def process_player_by_match(input_queue, output_queue, send_sentinel_to_master_f
     input_queue.consume(
         get_group_by_match_function(players_by_match, players_list_file),
         on_sentinel_callback=get_send_matches_ids_to_client_function(
-            output_queue, players_by_match, players_list_file, send_sentinel_to_master_function
+            output_queue, players_by_match, send_sentinel_to_master_function
         )
     )
+    players_list_file.close()
 
 def filter_players_by_weaker_winner(players_by_match):
     minimun_rating = get_config_param(MINIMUM_RATING_KEY, logger)
@@ -114,20 +115,20 @@ def filter_players_by_weaker_winner(players_by_match):
     return matches_ids
 
 
-def get_send_matches_ids_to_client_function(output_queue, players_by_match, players_list_file, send_sentinel_to_master_function):
+def get_send_matches_ids_to_client_function(output_queue, players_by_match, send_sentinel_to_master_function):
     def send_matches_ids_to_client(_, __):
         logger.info(f'All players in matches grouped.')
-        matches_ids = filter_players_by_weaker_winner(players_by_match)
-        logger.info(f"All matches with weaker winner found")
+        if len(players_by_match.keys()) > 0:
+            matches_ids = filter_players_by_weaker_winner(players_by_match)
+            logger.info(f"All matches with weaker winner found")
 
-        output_queue.send_list_as_rows(
-            matches_ids,
-            header_line=HEADER_LINE
-        )
+            output_queue.send_list_as_rows(
+                matches_ids,
+                header_line=HEADER_LINE
+            )
 
-        send_sentinel_to_master_function(_, __)
-        players_list_file.close()
-        os.remove(STATE_STORAGE_DIR + PLAYERS_LIST_FILE_NAME)
+            send_sentinel_to_master_function(_, __)
+            os.remove(STATE_STORAGE_DIR + PLAYERS_LIST_FILE_NAME)
 
     return send_matches_ids_to_client
 

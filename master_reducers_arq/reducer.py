@@ -37,9 +37,9 @@ def main_reducer(
     )
     output_queue = QueueInterface(connection, output_queue_name)
 
-    receive_and_reduce_function(
-        input_queue,
-        output_queue,
-        get_send_sentinel_to_master_function(logger, barrier_queue)
-    )
-    connection.close()
+    while True:
+        receive_and_reduce_function(
+            input_queue,
+            output_queue,
+            get_send_sentinel_to_master_function(logger, barrier_queue)
+        )
