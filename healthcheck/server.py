@@ -5,13 +5,12 @@ from socketserver import TCPServer
 from healthcheck.constants import SEND, RECV
 from logger.logger import Logger
 
-PORT=9999
-HOST=''
+PORT = 9999
+HOST = ''
 
 logger = Logger()
 
 class PingHandler(socketserver.BaseRequestHandler):
-
     def handle(self):
         data=b''
         try:
