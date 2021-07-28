@@ -2,7 +2,7 @@ import yaml
 import sys
 
 def get_id(i):
-    return str(i+1)
+    return str(i + 1)
 
 class NoAliasDumper(yaml.SafeDumper):
     def ignore_aliases(self, data):
@@ -18,7 +18,7 @@ n6: Supervisors
 """
 
 def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
-    compose_config={}
+    compose_config = {}
     compose_config["version"] = "3.5"
     compose_config["services"] = {}
 
@@ -67,10 +67,10 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
         ]
     }
 
-    nodes = []
+    nodes_to_be_supervised = []
 
     node = "filter_by_avr_rating_duration_and_server"
-    nodes.append(node)
+    nodes_to_be_supervised.append(node)
     compose_config["services"][node] = {
         "container_name": node,
         "image": "rabbitmq-python-base:0.0.1",
@@ -97,7 +97,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     }
 
     node = "filter_by_rating"
-    nodes.append(node)
+    nodes_to_be_supervised.append(node)
     compose_config["services"][node] = {
         "container_name": node,
         "image": "rabbitmq-python-base:0.0.1",
@@ -123,7 +123,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     }
 
     node = "filter_by_ladder_map_and_mirror"
-    nodes.append(node)
+    nodes_to_be_supervised.append(node)
     compose_config["services"][node] = {
         "container_name": node,
         "image": "rabbitmq-python-base:0.0.1",
@@ -151,7 +151,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     }
 
     node = "group_by_match_master"
-    nodes.append(node)
+    nodes_to_be_supervised.append(node)
     compose_config["services"][node] = {
         "container_name": node,
         "image": "rabbitmq-python-base:0.0.1",
@@ -176,7 +176,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     }
 
     node = "join_master_1v1"
-    nodes.append(node)
+    nodes_to_be_supervised.append(node)
     compose_config["services"][node] = {
         "container_name": node,
         "image": "rabbitmq-python-base:0.0.1",
@@ -209,7 +209,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
 
 
     node = "join_master_team"
-    nodes.append(node)
+    nodes_to_be_supervised.append(node)
     compose_config["services"][node] = {
         "container_name": node,
         "image": "rabbitmq-python-base:0.0.1",
@@ -240,7 +240,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     }
 
     node = "group_by_civ_master_1v1"
-    nodes.append(node)
+    nodes_to_be_supervised.append(node)
     compose_config["services"][node] = {
         "container_name": node,
         "image": "rabbitmq-python-base:0.0.1",
@@ -269,7 +269,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     }
 
     node = "group_by_civ_master_team"
-    nodes.append(node)
+    nodes_to_be_supervised.append(node)
     compose_config["services"][node] = {
         "container_name": node,
         "image": "rabbitmq-python-base:0.0.1",
@@ -298,7 +298,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     }
 
     node = "winner_rate_calculator"
-    nodes.append(node)
+    nodes_to_be_supervised.append(node)
     compose_config["services"][node] = {
         "container_name": node,
         "image": "rabbitmq-python-base:0.0.1",
@@ -320,7 +320,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     }
 
     node = "top_5_times_used_calculator"
-    nodes.append(node)
+    nodes_to_be_supervised.append(node)
     compose_config["services"][node] = {
         "container_name": node,
         "image": "rabbitmq-python-base:0.0.1",
@@ -372,7 +372,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     for i in range(n3):
         id = get_id(i)
         node = "group_by_civ_reducer_1v1_" + id
-        nodes.append(node)
+        nodes_to_be_supervised.append(node)
         compose_config["services"][node] = {
             "container_name": node,
             "image": "rabbitmq-python-base:0.0.1",
@@ -400,7 +400,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     for i in range(n5):
         id = get_id(i)
         node = "group_by_civ_reducer_team_" + id
-        nodes.append(node)
+        nodes_to_be_supervised.append(node)
         compose_config["services"][node] = {
             "container_name": node,
             "image": "rabbitmq-python-base:0.0.1",
@@ -428,7 +428,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     for i in range(n2):
         id = get_id(i)
         node = "join_reducer_1v1_" + id
-        nodes.append(node)
+        nodes_to_be_supervised.append(node)
         compose_config["services"][node] = {
             "container_name": node,
             "image": "rabbitmq-python-base:0.0.1",
@@ -457,7 +457,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     for i in range(n4):
         id = get_id(i)
         node = "join_reducer_team_" + id
-        nodes.append(node)
+        nodes_to_be_supervised.append(node)
         compose_config["services"][node] = {
             "container_name": node,
             "image": "rabbitmq-python-base:0.0.1",
@@ -482,15 +482,13 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             ]
         }
 
-    node = "supervisor"
-    supervisors = []
+    node_base = "supervisor_"
+    supervisors = [node_base + get_id(index) for index in range(n6)]
     for i in range(n6):
         id = get_id(i)
-        supervisors.append(node + id)
-    for i in range(n6):
-        id = get_id(i)
-        compose_config["services"][node + id] = {
-            "container_name": node + id,
+        node = node_base + id
+        compose_config["services"][node] = {
+            "container_name": node,
             "image": "supervisor:0.0.1",
             "volumes": [
                 "./supervisor:/supervisor",
@@ -503,11 +501,11 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             "entrypoint": "python3 /supervisor/supervisor.py",
             "environment": [
                 "TZ=America/Argentina/Buenos_Aires",
-                "SUPERVISOR_NAME=" + node + id,
+                "SUPERVISOR_NAME=" + node,
                 "SUPERVISORS=" + ','.join(supervisors),
-                "NODES=" + ','.join(nodes),
+                "NODES=" + ','.join(nodes_to_be_supervised),
             ],
-            "depends_on": nodes,
+            "depends_on": nodes_to_be_supervised,
             "networks": [
                 "age_of_empires_net"
             ]
@@ -522,7 +520,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     }
   
     with open("docker-compose-client-and-servers.yaml", "w") as file:
-        yaml.dump(compose_config, file, default_flow_style=False, sort_keys=False,Dumper=NoAliasDumper)
+        yaml.dump(compose_config, file, default_flow_style=False, Dumper=NoAliasDumper)
 
 if __name__ == '__main__':
     args = sys.argv
