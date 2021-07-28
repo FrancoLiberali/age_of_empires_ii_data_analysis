@@ -14,10 +14,11 @@ n2: Reducers amount of join matches 1v1 and players
 n3: Reducers amount of group players of matches 1v1 by civ
 n4: Reducers amount of join team matches and players
 n5: Reducers amount of group players of team matches by civ
-n6: Supervisors
+n6: Authorizators
+n7: Supervisors
 """
 
-def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
+def generate_compose_yaml(n1, n2, n3, n4, n5, n6, n7):
     compose_config = {}
     compose_config["version"] = "3.5"
     compose_config["services"] = {}
@@ -68,29 +69,6 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
     }
 
     nodes_to_be_supervised = []
-
-    node = "authorizator"
-    nodes_to_be_supervised.append(node)
-    compose_config["services"][node] = {
-        "container_name": node,
-        "image": "rabbitmq-python-base:0.0.1",
-        "volumes": [
-            "./authorizator:/age_of_empires_ii_da",
-            "./communications:/age_of_empires_ii_da/communications",
-            "./config:/age_of_empires_ii_da/config",
-            "./healthcheck:/age_of_empires_ii_da/healthcheck",
-            "./logger:/age_of_empires_ii_da/logger",
-            "../age_of_empires_servers_data/authorizator:/data"
-        ],
-        "entrypoint": "python3 /age_of_empires_ii_da/authorizator.py",
-        "environment": [
-            "TZ=America/Argentina/Buenos_Aires",
-            "RABBITMQ_HOST=rabbitmq",
-        ],
-        "networks": [
-            "age_of_empires_net"
-        ]
-    }
 
     node = "filter_by_avr_rating_duration_and_server"
     nodes_to_be_supervised.append(node)
@@ -520,9 +498,34 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
             ]
         }
 
-    node_base = "supervisor_"
-    supervisors = [node_base + get_id(index) for index in range(n6)]
     for i in range(n6):
+        id = get_id(i)
+        node = "authorizator_" + id
+        nodes_to_be_supervised.append(node)
+        compose_config["services"][node] = {
+            "container_name": node,
+            "image": "rabbitmq-python-base:0.0.1",
+            "volumes": [
+                "./authorizator:/age_of_empires_ii_da",
+                "./communications:/age_of_empires_ii_da/communications",
+                "./config:/age_of_empires_ii_da/config",
+                "./healthcheck:/age_of_empires_ii_da/healthcheck",
+                "./logger:/age_of_empires_ii_da/logger",
+                "../age_of_empires_servers_data/authorizators:/data"
+            ],
+            "entrypoint": "python3 /age_of_empires_ii_da/authorizator.py",
+            "environment": [
+                "TZ=America/Argentina/Buenos_Aires",
+                "RABBITMQ_HOST=rabbitmq",
+            ],
+            "networks": [
+                "age_of_empires_net"
+            ]
+        }
+
+    node_base = "supervisor_"
+    supervisors = [node_base + get_id(index) for index in range(n7)]
+    for i in range(n7):
         id = get_id(i)
         node = node_base + id
         compose_config["services"][node] = {
@@ -563,4 +566,6 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6):
 
 if __name__ == '__main__':
     args = sys.argv
-    generate_compose_yaml(int(args[1]),int(args[2]),int(args[3]),int(args[4]),int(args[5]),int(args[6]))
+    generate_compose_yaml(int(args[1]), int(args[2]), int(args[3]),
+                          int(args[4]), int(args[5]), int(args[6]),
+                          int(args[7]))

@@ -22,7 +22,7 @@ Sistema distribuidos que procesa el detalle de partidas jugadas en el videojuego
 4. Levantar el proyecto
 
 	```bash
-	./start_up.sh n1 n2 n3 n4 n5 n6
+	./start_up.sh n1 n2 n3 n4 n5 n6 n7
 	```
 
 	* n1: Cantidad de group by match reducer
@@ -30,7 +30,8 @@ Sistema distribuidos que procesa el detalle de partidas jugadas en el videojuego
 	* n3: Cantidad group players of matches by civ reducer 1v1
 	* n4: Cantidad de join matches and players reducer team
 	* n5: Cantidad group players of matches by civ reducer team
-	* n6: Cantidad de supervisores
+	* n6: Cantidad de autorizadores
+	* n7: Cantidad de supervisores
 
 5. Al terminar la ejecución las salidas estarán impresas en la pantalla junto al resto de logs. Para ver solo las salidas usar
 

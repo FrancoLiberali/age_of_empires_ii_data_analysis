@@ -86,9 +86,10 @@ def write_to_output(output_file_name, dataset_token, new_matches):
         output_file.write(new_matches)
     output_file.close()
 
-def get_receive_matches_ids_function(matches_ids, dataset_token, output_file_name, output_lock_file_name, skip_header):
+def get_receive_matches_ids_function(dataset_token, output_file_name, output_lock_file_name, skip_header):
     # function currying in python
     def receive_matches_ids(queue, received_string, _, __):
+        logger.info("Received matches ids from system")
         new_matches = split_rows_into_list(
             received_string, skip_header=skip_header)
         with_lock(
@@ -96,23 +97,26 @@ def get_receive_matches_ids_function(matches_ids, dataset_token, output_file_nam
             write_to_output,
             output_file_name, dataset_token, new_matches
         )
-
-        for match_id in split_rows_into_list(received_string, skip_header=skip_header):
-            matches_ids.append(match_id)
     return receive_matches_ids
 
 
-def get_print_matches_ids_function(dataset_token, output_sentinel_file_name, matches_ids, message):
+def get_print_matches_ids_function(dataset_token, output_file_name, output_sentinel_file_name, message):
     # function currying in python
     def print_matches_ids(_, __):
         try:
+            logger.info("Received sentinel of output")
             OneLineFile(
                 get_dataset_token_dir(dataset_token),
                 output_sentinel_file_name,
                 only_create=True
             ).close()
+            output_file = ListFile(
+                get_dataset_token_dir(dataset_token),
+                output_file_name
+            )
             logger.info(message)
-            logger.info('\n'.join(matches_ids))
+            logger.info('\n'.join(output_file.content))
+            output_file.close()
         except FileAlreadyExistError:
             logger.debug(
                 f"Sentinel received already exists: {output_sentinel_file_name}")
@@ -129,10 +133,8 @@ def get_matches_ids(
         message,
         skip_header=False
     ):
-    matches_ids = []
     queue.consume(
         get_receive_matches_ids_function(
-            matches_ids,
             dataset_token,
             output_file_name,
             output_lock_file_name,
@@ -140,8 +142,8 @@ def get_matches_ids(
         ),
         on_sentinel_callback=get_print_matches_ids_function(
             dataset_token,
+            output_file_name,
             output_sentinel_file_name,
-            matches_ids,
             message
         ),
     )
