@@ -36,7 +36,7 @@ ENTRY_PLAYERS_INDEXES = get_config_params([
 
 def get_receive_matches_ids_function(matches_ids, skip_header):
     # function currying in python
-    def receive_matches_ids(queue, received_string, _):
+    def receive_matches_ids(queue, received_string, _, __):
         for match_id in split_rows_into_list(received_string, skip_header=skip_header):
             matches_ids.append(match_id)
     return receive_matches_ids
@@ -157,7 +157,7 @@ def receive_weaker_winner_matches_ids():
     connection.close()
 
 
-def receive_winner_rate_of_all_civs(queue, received_string, _):
+def receive_winner_rate_of_all_civs(queue, received_string, _, __):
     logger.info("Porcentaje de victorias por civilización en partidas 1v1(ladder == RM_1v1) con civilizaciones diferentes en mapa arena son:")
     logger.info(received_string)
     queue.stop_consuming()
@@ -173,7 +173,7 @@ def receive_winner_rate_by_civ():
     connection.close()
 
 
-def receive_top_5_civs_used(queue, received_string, _):
+def receive_top_5_civs_used(queue, received_string, _, __):
     logger.info("Top 5 civilizaciones más usadas por pro players(rating > 2000) en team games (ladder == RM_TEAM) en mapa islands son: ")
     logger.info(received_string)
     queue.stop_consuming()

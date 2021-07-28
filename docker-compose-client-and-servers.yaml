@@ -214,6 +214,7 @@ services:
       - ./communications:/winner_rate_calculator/communications
       - ./config:/winner_rate_calculator/config
       - ./logger:/winner_rate_calculator/logger
+      - ../age_of_empires_servers_data/winner_rate_calculator:/data
     entrypoint: python3 /winner_rate_calculator/winner_rate_calculator.py
     environment:
       - TZ=America/Argentina/Buenos_Aires

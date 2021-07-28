@@ -30,7 +30,7 @@ def get_on_sentinel_callback_function(output_exchange, players_by_key, matches_b
         logger.info(
             f"Sentinel message: {sentinels_count}/{INPUTS_AMOUNT} received")
         if routing_key == MATCHES_KEY:
-            logger.info("Sendinf matches sentinels because all matches had come")
+            logger.info("Sending matches sentinels because all matches had come")
             # TODO descomentar esto para volver a poner la optimizacion de chunks si queda tiempo. Requiere reanalizar estados
             # send the remaining matches
             # send_dict_by_key(output_exchange, matches_by_key,
@@ -53,7 +53,7 @@ def get_on_sentinel_callback_function(output_exchange, players_by_key, matches_b
     return on_sentinel_callback
 
 def get_dispach_to_reducers_function(output_exchange, players_by_key, matches_by_key, partition_function):
-    def dispach_to_reducers(queue, received_string, routing_key):
+    def dispach_to_reducers(queue, received_string, routing_key, _):
         received_entries = split_rows_into_list(received_string)
         if routing_key == PLAYERS_KEY:
             add_to_dict_by_key(
