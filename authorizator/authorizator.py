@@ -1,5 +1,8 @@
+import datetime
 import os
+import pathlib
 import threading
+import time
 
 from communications.constants import LONG_MATCHES_TO_CLIENT_QUEUE_NAME, \
     TOP_5_USED_CALCULATOR_TO_CLIENT_QUEUE_NAME, \
@@ -23,13 +26,27 @@ OUTPUT_3_FILE_NAME = "output3.txt"
 OUTPUT_4_FILE_NAME = "output4.txt"
 FILES_PER_PROCESSED_DATASET_AMOUNT  = 6
 
+MAX_LOCK_TIME_IN_SECONDS = 5
 DATASET_TOKEN_LOCK_FILE_NAME = "dataset_token_lock.txt"
 OUTPUT_1_LOCK_FILE_NAME = "output1_lock.txt"
 OUTPUT_2_LOCK_FILE_NAME = "output2_lock.txt"
 
 def with_lock(lock_file_name, function, *args):
-    # TODO
-    function(*args)
+    lock_file_full_path = STORAGE_DIR + lock_file_name
+    while (True):
+        try:
+            OneLineFile(STORAGE_DIR, lock_file_name, only_create=True)
+            function(*args)
+            os.remove(lock_file_full_path)
+            break
+        except FileAlreadyExistError:
+            path = pathlib.Path(lock_file_full_path)
+            created_time = datetime.datetime.fromtimestamp(path.stat().st_mtime)
+            difference = (datetime.now() - created_time).total_seconds()
+            if difference > MAX_LOCK_TIME_IN_SECONDS:
+                os.remove(lock_file_full_path)
+            time.sleep(1)
+            continue
 
 def with_dataset_token_lock(function, dataset_token):
     with_lock(DATASET_TOKEN_LOCK_FILE_NAME, function, dataset_token)
