@@ -4,12 +4,18 @@ import os
 
 from abc import ABC, abstractmethod
 
+
+class FileAlreadyExistError(Exception):
+    pass
+
 class File(ABC):
-    def __init__(self, dir_path, file_name, read_content=True):
+    def __init__(self, dir_path, file_name, read_content=True, only_create=False):
         os.makedirs(os.path.dirname(dir_path), exist_ok=True)
         self.full_name = dir_path + file_name
         try:
             self.file = open(self.full_name, "r+")
+            if only_create:
+                raise FileAlreadyExistError
             if read_content:
                 self.content = self._load_data()
         except FileNotFoundError:
