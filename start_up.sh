@@ -13,7 +13,6 @@ n4: Amount of Reducers for join team matches and players
 n5: Amount of Reducers for group players of team matches by civ
 n6: Amount of supervisors"
 
-sudo apt-get install python3-venv
 python3 -m venv age_of_empires_ii_da
 source age_of_empires_ii_da/bin/activate
 pip3 install pyyaml==5.4.1
