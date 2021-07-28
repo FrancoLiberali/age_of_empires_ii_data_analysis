@@ -1,19 +1,19 @@
-from logger.logger import Logger
 import socket
 
-PORT = 9999
-SEND=b'PING!'
-RECV=b'PONG!'
-logger=Logger()
+from healthcheck.constants import SEND, RECV
+from logger.logger import Logger
 
-def ping(host):    
+PORT = 9999
+logger = Logger()
+
+def ping(host):
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((host, PORT))
         sock.sendall(SEND)
-        logger.debug("Client Sent Request Ping")        
+        logger.debug("Client Sent Request Ping")
     except socket.error:
-        return False    
+        return False
     try:
         data=b''
         while len(data) < len(RECV):

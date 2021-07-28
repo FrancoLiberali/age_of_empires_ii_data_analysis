@@ -1,10 +1,11 @@
-from logger.logger import Logger
-import socket
 import json
+import socket
 import struct
 
-PORT=9998
-logger=Logger()
+from logger.logger import Logger
+
+PORT = 9998
+logger = Logger()
 
 def send_neighbour(host_id, nodes, message):
     neighbour_node_pos = nodes.index(host_id) + 1
@@ -20,7 +21,7 @@ def send_neighbour(host_id, nodes, message):
         except socket.error as err:
             logger.debug(f"Connection error with {neighbour_node}: {err.strerror}.")
             neighbour_node_pos += 1
-                       
+
     return False
 
 
@@ -31,7 +32,8 @@ def send_election_message(voted_id, host_id, nodes):
         'sender': host_id,
     }
     return send_neighbour(host_id, nodes, message)
-    
+
+
 def send_coordinator_message(leader_id, host_id, nodes):
     message = {
         'type': 'COORDINATOR',
@@ -39,7 +41,7 @@ def send_coordinator_message(leader_id, host_id, nodes):
         'sender': host_id,
     }
     return send_neighbour(host_id, nodes, message)
-    
+
 
 def start_election(host_id, nodes):
     return send_election_message(host_id, host_id, nodes)

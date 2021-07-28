@@ -1,12 +1,12 @@
-from logger.logger import Logger
 import json
-import struct
 import ring
 import socket
+import struct
 
+from logger.logger import Logger
 
-HOST=''
-PORT=9998
+HOST = ''
+PORT = 9998
 ELECTION = 'ELECTION'
 COORDINATOR = 'COORDINATOR'
 logger = Logger()
@@ -31,12 +31,12 @@ class RingElectionServer:
         self.out_queue.put(None)
         self.leader = None
         self.participating = True
-    
+
     def handle_election_request(self, request):
         # the election went all the way round and the host continues being the leader -> declare leader
         if request['leader'] == self.hostname:
             self.participating = False
-            ring.client.send_coordinator_message(self.hostname, self.hostname, self.nodes)            
+            ring.client.send_coordinator_message(self.hostname, self.hostname, self.nodes)
             return
         # incoming voted leader is greater than host -> forward incoming leader
         if (request['leader'] > self.hostname):
@@ -45,7 +45,7 @@ class RingElectionServer:
                     self.participate()
             else:
                 self.declare_as_leader()
-            return   
+            return
         # incoming voted leader is smaller than host -> forward host as leader  
         if (request['leader'] < self.hostname) and not self.participating:
             if ring.client.send_election_message(self.hostname, self.hostname, self.nodes):
@@ -76,7 +76,7 @@ class RingElectionServer:
             self.handle_election_request(request)
         if request['type'] == COORDINATOR:
             self.handle_coordinator_request(request)
-    
+
     def accept_new_connection(self):
         c, addr = self.server_socket.accept()
         return c
@@ -85,7 +85,7 @@ class RingElectionServer:
          while True:
             client_sock = self.accept_new_connection()
             self.handle_client(client_sock)
-        
+
 def run(hostname, nodes, out_queue):
     server = RingElectionServer(hostname, nodes, out_queue)
-    server.run()   
+    server.run()
