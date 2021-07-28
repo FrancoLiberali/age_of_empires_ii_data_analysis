@@ -31,6 +31,8 @@ DATASET_TOKEN_LOCK_FILE_NAME = "dataset_token_lock.txt"
 OUTPUT_1_LOCK_FILE_NAME = "output1_lock.txt"
 OUTPUT_2_LOCK_FILE_NAME = "output2_lock.txt"
 
+LOCK_LOCKED_SLEEP_TIME_IN_SECONDS = 1
+
 def with_lock(lock_file_name, function, *args):
     lock_file_full_path = STORAGE_DIR + lock_file_name
     while (True):
@@ -42,10 +44,12 @@ def with_lock(lock_file_name, function, *args):
         except FileAlreadyExistError:
             path = pathlib.Path(lock_file_full_path)
             created_time = datetime.datetime.fromtimestamp(path.stat().st_mtime)
-            difference = (datetime.now() - created_time).total_seconds()
+            difference = (
+                datetime.datetime.now() - created_time
+            ).total_seconds()
             if difference > MAX_LOCK_TIME_IN_SECONDS:
                 os.remove(lock_file_full_path)
-            time.sleep(1)
+            time.sleep(LOCK_LOCKED_SLEEP_TIME_IN_SECONDS)
             continue
 
 def with_dataset_token_lock(function, dataset_token):
