@@ -81,7 +81,9 @@ def get_dataset_token_dir(dataset_token):
 def write_to_output(output_file_name, dataset_token, new_matches):
     output_file = ListFile(
         get_dataset_token_dir(dataset_token), output_file_name)
-    output_file.write(new_matches)
+    actual_matches = output_file.content
+    if not new_matches[0] in actual_matches:
+        output_file.write(new_matches)
     output_file.close()
 
 def get_receive_matches_ids_function(matches_ids, dataset_token, output_file_name, output_lock_file_name, skip_header):
