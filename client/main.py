@@ -5,7 +5,7 @@ import time
 
 from config.envvars import CHUCKSIZE_IN_LINES_KEY, ENTRY_MATCH_AVERAGE_RATING_INDEX_KEY, ENTRY_MATCH_DURATION_INDEX_KEY, ENTRY_MATCH_LADDER_INDEX_KEY, ENTRY_MATCH_MAP_INDEX_KEY, ENTRY_MATCH_MIRROR_INDEX_KEY, ENTRY_MATCH_SERVER_INDEX_KEY, ENTRY_MATCH_TOKEN_INDEX_KEY, ENTRY_PLAYER_CIV_INDEX_KEY, ENTRY_PLAYER_MATCH_INDEX_KEY, ENTRY_PLAYER_RATING_INDEX_KEY, ENTRY_PLAYER_TOKEN_INDEX_KEY, ENTRY_PLAYER_WINNER_INDEX_KEY, MATCHES_FILE_NAME_KEY, PLAYERS_FILE_NAME_KEY, get_config_param, get_config_params
 from communications.constants import AUTHORIZED_CODE, AUTHORIZE_RESPONSE_AUTHORIZATION_INDEX, CLIENTS_REQUESTS_QUEUE_NAME, CLIENTS_RESPONSES_EXCHANGE_NAME, CLIENT_REQUEST_SEPARATOR, CLIENT_REQUEST_TYPE_AUTHORIZE, MATCHES_FANOUT_EXCHANGE_NAME, PLAYERS_FANOUT_EXCHANGE_NAME
-from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection
+from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, RabbitMQConnection
 from logger.logger import Logger
 
 logger = Logger(True)
@@ -126,11 +126,18 @@ TIME_BETWEEN_AUTHORIZATION_RETRY_IN_SECONDS = 15
 def main():
     connection = RabbitMQConnection()
 
-    response_queue = QueueInterface.newPrivate(connection)
+    response_queue = QueueInterface.newPrivate(
+        connection,
+        last_hash_strategy=LastHashStrategy.NO_LAST_HASH_SAVING
+    )
     response_exchange = ExchangeInterface.newDirect(
         connection, CLIENTS_RESPONSES_EXCHANGE_NAME)
     response_queue.bind(response_exchange, routing_key=response_queue.name)
-    requests_queue = QueueInterface(connection, CLIENTS_REQUESTS_QUEUE_NAME)
+    requests_queue = QueueInterface(
+        connection,
+        CLIENTS_REQUESTS_QUEUE_NAME,
+        last_hash_strategy=LastHashStrategy.NO_LAST_HASH_SAVING
+    )
     while True:
         logger.info("Trying to send dataset")
         requests_queue.send_string(

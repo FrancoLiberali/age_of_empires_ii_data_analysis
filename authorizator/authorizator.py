@@ -87,10 +87,10 @@ def get_dataset_token():
     return with_dataset_token_lock(internal_get_dataset_token)
 
 def internal_set_finished_with_dataset(dataset_token):
-    # TODO ver esto, seria lo ideal pero no funciona
-    # for queue in [queue_output_1, queue_output_2, queue_output_3, queue_output_4]:
+    for queue in [queue_output_1, queue_output_2, queue_output_3, queue_output_4]:
         # ack all messages to remove duplicates that otherwise would be considered as results of the next dataset
-        # queue.clear()
+        # TODO queue.clear()
+        queue.set_last_hash("")
     dataset_token_file = get_dataset_token_file()
     if dataset_token_file.content == dataset_token:
         logger.info(f"Setting that dataset {dataset_token} finished")
@@ -318,7 +318,11 @@ def main():
     start_results_receiving_threads()
 
     connection = RabbitMQConnection()
-    requests_queue = QueueInterface(connection, CLIENTS_REQUESTS_QUEUE_NAME)
+    requests_queue = QueueInterface(
+        connection,
+        CLIENTS_REQUESTS_QUEUE_NAME,
+        last_hash_strategy=LastHashStrategy.NO_LAST_HASH_SAVING
+    )
     output_exchange = ExchangeInterface.newDirect(connection, CLIENTS_RESPONSES_EXCHANGE_NAME)
     requests_queue.consume(
         get_handle_client_request_function(output_exchange)

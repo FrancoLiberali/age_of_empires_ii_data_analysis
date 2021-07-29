@@ -118,7 +118,10 @@ def main_civ_calculator(
     logger.debug(f'Initial data size: {len(data_dict.keys())}')
 
     if initial_state == STATE_CALCULATING:
+        # allow same messages again if the next dataset have same data
+        input_queue.set_last_hash("")
         calculate_stage(calculate_function, data_dict, output_queue)
+        data_dict = {}
 
     while True:
         logger.info('Starting to receive data')
@@ -129,5 +132,7 @@ def main_civ_calculator(
             between_hash_and_ack_callback=rename_new_data_to_data,
             on_sentinel_callback=on_sentinel_callback
         )
+        # allow same messages again if the next dataset have same data
+        input_queue.set_last_hash("")
         calculate_stage(calculate_function, data_dict, output_queue)
-    connection.close()
+        data_dict = {}

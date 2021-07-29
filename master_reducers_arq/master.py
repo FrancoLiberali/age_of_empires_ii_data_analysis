@@ -117,7 +117,10 @@ def receive_sentinels_stage(state_file, barrier_queue, reducers_output_queue, en
     send_sentinel_and_go_to_dispaching(
         state_file, reducers_output_queue, entry_queue)
 
-def delete_sentinels_received():
+
+def delete_sentinels_received(barrier_queue):
+    barrier_queue.set_last_hash("")
+    barrier_queue.clear()
     safe_remove_file(STATE_STORAGE_DIR + SENTINELS_RECEIVED_FILE_NAME)
 
 def send_sentinel_with_master_id_and_last_hash(reducers_output_queue, entry_queue):
@@ -163,27 +166,32 @@ def main_master(
         logger.info("Finished reducers queues configuration")
     elif state == STATE_RECEIVING_SENTINELS:
         logger.debug("Init at receiving sentinels")
-        entry_queue.set_last_hash(SENTINEL_MESSAGE)
+        # allow same messages again if the next dataset have same data
+        entry_queue.set_last_hash("")
         sentinels_received_file = JsonFile(
             STATE_STORAGE_DIR, SENTINELS_RECEIVED_FILE_NAME
         )
         sentinel_received_amount = len(sentinels_received_file.content.keys())
         sentinels_received_file.close()
         if sentinel_received_amount == reducers_amount:
-            send_sentinel_and_go_to_dispaching()
+            send_sentinel_and_go_to_dispaching(
+                state_file, reducers_output_queue, entry_queue
+            )
         else:
             receive_sentinels_stage(
                 state_file, barrier_queue, reducers_output_queue,
                 entry_queue, reducers_amount
             )
     while True:
-        delete_sentinels_received()
+        delete_sentinels_received(barrier_queue)
         receive_and_dispach_function(
             entry_queue,
             output_exchage,
             partition_function,
             state_file
         )
+        # allow same messages again if the next dataset have same data
+        entry_queue.set_last_hash("")
         receive_sentinels_stage(
             state_file, barrier_queue, reducers_output_queue,
             entry_queue, reducers_amount

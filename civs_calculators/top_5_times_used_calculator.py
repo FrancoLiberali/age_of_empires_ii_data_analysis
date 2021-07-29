@@ -27,6 +27,7 @@ TOP_LEN = 5
 
 def calculate_top_5(logger, times_used_by_civ):
     logger.info('All times used received, calculating top 5')
+    logger.debug(f'times_used_by_civ: {times_used_by_civ}')
     times_used_list = times_used_by_civ.items()
     sorted_list = sorted(
         times_used_list,

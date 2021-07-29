@@ -113,10 +113,10 @@ class QueueInterface(RabbitMQInterface):
             self.channel.queue_declare(queue=self.name)
 
     @classmethod
-    def newPrivate(cls, rabbit_MQ_connection):
+    def newPrivate(cls, rabbit_MQ_connection, last_hash_strategy=LastHashStrategy.ONE_LAST_HASH_SAVING):
         result = rabbit_MQ_connection.channel.queue_declare(queue='')
         private_queue_name = result.method.queue
-        return cls(rabbit_MQ_connection, private_queue_name, private=True)
+        return cls(rabbit_MQ_connection, private_queue_name, last_hash_strategy=last_hash_strategy, private=True)
 
     def bind(self, exchange, routing_key=None):
         self.channel.queue_bind(
@@ -131,6 +131,9 @@ class QueueInterface(RabbitMQInterface):
             routing_key=self.name,
             body=message.encode(STRING_ENCODING)
         )
+
+    def clear(self):
+        self.channel.queue_purge(self.name)
 
     def consume(self, on_message_callback, on_sentinel_callback=None, between_hash_and_ack_callback=None):
         self.channel.basic_consume(
