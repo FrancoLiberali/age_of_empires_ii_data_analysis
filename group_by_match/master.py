@@ -10,7 +10,6 @@ from communications.rabbitmq_interface import ExchangeInterface, QueueInterface
 def subscribe_to_entries(connection):
     input_exchage = ExchangeInterface.newFanout(
         connection, PLAYERS_FANOUT_EXCHANGE_NAME)
-    # TODO guarda last hash solo para usarlo en el sentinel final, no hay posibles duplicados a la entrada
     input_queue = QueueInterface(
         connection, GROUP_BY_MATCH_MASTER_PLAYERS_INPUT_QUEUE_NAME)
     input_queue.bind(input_exchage)

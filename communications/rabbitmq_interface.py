@@ -95,7 +95,6 @@ class QueueInterface(RabbitMQInterface):
         RabbitMQInterface.__init__(self, rabbit_MQ_connection, name)
         self.last_hash_strategy = last_hash_strategy
         if self.last_hash_strategy != LastHashStrategy.NO_LAST_HASH_SAVING:
-            # TODO nunca se hace el close
             if self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_ROUTING_KEY or self.last_hash_strategy == LastHashStrategy.LAST_HASH_PER_REDUCER_ID:
                 self.last_hash_file = JsonFile(
                     LAST_HASH_DIR_PATH,

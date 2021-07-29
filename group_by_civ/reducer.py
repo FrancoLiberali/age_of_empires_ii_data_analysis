@@ -17,7 +17,6 @@ def get_count_function(append_to_results_function, append_to_data_to_send_functi
         data_to_send = []
         for civ, result in results_by_civ.items():
             append_to_data_to_send_function(data_to_send, civ, result)
-        # TODO ojo con esto, al usar queue.last_hash no se esta usando el actual sino el anterior, aunque igualmente deberia funcionar
         output_queue.send_list_of_columns(
             data_to_send,
             header_line=f"{header_line_constant_part}{queue.last_hash}"

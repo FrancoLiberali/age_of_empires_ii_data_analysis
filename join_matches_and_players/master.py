@@ -117,8 +117,6 @@ def subscribe_to_entries(connection):
     return input_queue
 
 def main():
-    # TODO CONSULTAR, al matarlo igual rabbit sigue diciendo que la conexion esta y los mensajes como estan en Unacked
-    # no los vuelve a leer, despues de un rato recien reacciona
     main_master(
         get_config_param(BARRIER_QUEUE_NAME_KEY, logger),
         get_config_param(REDUCERS_OUTPUT_QUEUE_NAME_KEY, logger),
