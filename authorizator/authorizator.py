@@ -5,11 +5,11 @@ import threading
 import time
 import uuid
 
-from communications.constants import AUTHORIZED_CODE, CLIENTS_REQUESTS_QUEUE_NAME, CLIENTS_RESPONSES_EXCHANGE_NAME, CLIENT_REQUEST_RESPONSE_QUEUE_NAME_INDEX, CLIENT_REQUEST_SEPARATOR, CLIENT_REQUEST_TYPE_AUTHORIZE, CLIENT_REQUEST_TYPE_INDEX, CLIENT_REQUEST_TYPE_QUERY, LONG_MATCHES_TO_AUTHORIZATOR_QUEUE_NAME, \
+from communications.constants import AUTHORIZED_CODE, CLIENTS_REQUESTS_QUEUE_NAME, CLIENTS_RESPONSES_EXCHANGE_NAME, CLIENT_QUERY_REQUEST_DATASET_TOKEN_INDEX, CLIENT_REQUEST_RESPONSE_QUEUE_NAME_INDEX, CLIENT_REQUEST_SEPARATOR, CLIENT_REQUEST_TYPE_AUTHORIZE, CLIENT_REQUEST_TYPE_INDEX, CLIENT_REQUEST_TYPE_QUERY, DATASET_BEING_PROCESSED_CODE, DATASET_FINISHED_CODE, DATASET_NOT_FOUND_CODE, LONG_MATCHES_TO_AUTHORIZATOR_QUEUE_NAME, QUERY_RESPONSE_RESULTS_OUTPUT_SEPARATOR, \
     TOP_5_USED_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME, UNAUTHORIZED_CODE, \
     WEAKER_WINNER_TO_AUTHORIZATOR_QUEUE_NAME, \
     WINNER_RATE_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME
-from communications.file import FileAlreadyExistError, ListFile, OneLineFile, safe_remove_file
+from communications.file import File, FileAlreadyExistError, ListFile, OneLineFile, safe_remove_file
 from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, RabbitMQConnection, split_rows_into_list, ExchangeInterface
 import healthcheck.server
 from logger.logger import Logger
@@ -292,8 +292,38 @@ def reply_authorization_request(output_exchange, response_queue_name):
         output_exchange.send_string(UNAUTHORIZED_CODE, response_queue_name)
 
 
-def reply_query_request(output_exchange, response_queue_name, request):
-    pass
+def reply_query_request(output_exchange, response_queue_name, dataset_token_query):
+    logger.info(f"Query for {dataset_token_query} request arrived")
+    dataset_token = get_dataset_token()
+    if dataset_token == dataset_token_query:
+        logger.info(f"{dataset_token_query} is being processed")
+        output_exchange.send_string(
+            DATASET_BEING_PROCESSED_CODE,
+            response_queue_name
+        )
+    else:
+        try:
+            results = []
+            for output_file_name in [OUTPUT_1_FILE_NAME, OUTPUT_2_FILE_NAME, OUTPUT_3_FILE_NAME, OUTPUT_4_FILE_NAME]:
+                output_file = File(
+                    get_dataset_token_dir(dataset_token_query),
+                    output_file_name,
+                    fail_is_not_exist=True
+                )
+                results.append(output_file.content)
+            results_string = QUERY_RESPONSE_RESULTS_OUTPUT_SEPARATOR.join(results)
+            logger.info(f"Returning results of dataset {dataset_token_query}")
+            output_exchange.send_string(
+                CLIENT_REQUEST_SEPARATOR.join(
+                    [DATASET_FINISHED_CODE, results_string]
+                ),
+                response_queue_name
+            )
+        except FileNotFoundError:
+            output_exchange.send_string(
+                DATASET_NOT_FOUND_CODE,
+                response_queue_name
+            )
 
 
 def get_handle_client_request_function(output_exchange):
@@ -308,7 +338,7 @@ def get_handle_client_request_function(output_exchange):
             )
         if request[CLIENT_REQUEST_TYPE_INDEX] == CLIENT_REQUEST_TYPE_QUERY:
             reply_query_request(output_exchange,
-                                response_queue_name, request)
+                                response_queue_name, request[CLIENT_QUERY_REQUEST_DATASET_TOKEN_INDEX])
     return handle_client_request
 
 

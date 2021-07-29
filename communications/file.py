@@ -2,16 +2,15 @@ import io
 import json
 import os
 
-from abc import ABC, abstractmethod
-
-
 class FileAlreadyExistError(Exception):
     pass
 
-class File(ABC):
-    def __init__(self, dir_path, file_name, read_content=True, only_create=False):
-        os.makedirs(os.path.dirname(dir_path), exist_ok=True)
+class File():
+    def __init__(self, dir_path, file_name, read_content=True, only_create=False, fail_is_not_exist=False):
         self.full_name = dir_path + file_name
+        if fail_is_not_exist and not os.path.isfile(self.full_name):
+            raise FileNotFoundError
+        os.makedirs(os.path.dirname(dir_path), exist_ok=True)
         try:
             self.file = open(self.full_name, "r+")
             if only_create:
@@ -26,17 +25,14 @@ class File(ABC):
     def close(self):
         self.file.close()
 
-    @abstractmethod
     def _load_data(self):
-        pass
+        return self.file.read()
 
-    @abstractmethod
     def _generate_data(self):
-        pass
+        return ""
 
-    @abstractmethod
-    def write(self):
-        pass
+    def write(self, text):
+        self.file.write(text)
 
 
 class OneLineFile(File):
