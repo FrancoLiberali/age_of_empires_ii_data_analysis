@@ -44,7 +44,7 @@ class Supervisor:
     def start_node(self, node):
         result = subprocess.run(['docker', 'start', node], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         logger.info('Starting {}...'.format(node))
-        logger.debug('Starting {}. Result={}. Output={}. Error={}'.format(node, result.returncode, result.stdout, result.stderr))
+        # logger.debug('Starting {}. Result={}. Output={}. Error={}'.format(node, result.returncode, result.stdout, result.stderr))
 
     def node_is_down(self, node):
         if not healthcheck.client.ping(node):
@@ -53,8 +53,8 @@ class Supervisor:
         return False
 
     def do_leader_tasks(self):
-        logger.debug("Doing leader tasks")
-        logger.debug(f"Checking if all nodes are alive: {self.nodes}")
+        # logger.debug("Doing leader tasks")
+        # logger.debug(f"Checking if all nodes are alive: {self.nodes}")
         for node in self.nodes:
             if self.node_is_down(node):
                 self.start_node(node)
@@ -63,8 +63,8 @@ class Supervisor:
                 self.start_node(supervisor)
 
     def do_non_leader_tasks(self):
-        logger.debug("Doing non leader tasks")
-        logger.debug("Checking if leader supervisor is alive...")
+        # logger.debug("Doing non leader tasks")
+        # logger.debug("Checking if leader supervisor is alive...")
         if not healthcheck.client.ping(self.leader):
             logger.info("Leader supervisor {} not responding".format(self.leader))
             self.leader = None
@@ -75,7 +75,8 @@ class Supervisor:
             self.leader = self.leader_queue.get(block=False)
             self.wait_for_leader()
         except queue.Empty:
-            logger.debug("Leader did not change")
+            pass
+            # logger.debug("Leader did not change")
 
     def run(self):
         healthcheck.server.start_in_new_process()

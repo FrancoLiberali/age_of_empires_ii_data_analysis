@@ -19,15 +19,15 @@ class PingHandler(socketserver.BaseRequestHandler):
         try:
             while len(data) < len(RECV):
                 data += self.request.recv(len(RECV) - len(data))
-                logger.debug("Server Receive: data={} len(data)={}".format(data, len(data)))
+                # logger.debug("Server Receive: data={} len(data)={}".format(data, len(data)))
         except socket.error as err:
-            logger.debug("PingHandler: Socket error receiving ping request: {}".format(err.strerror))
+            # logger.debug("PingHandler: Socket error receiving ping request: {}".format(err.strerror))
             return
         if data == RECV:
-            logger.debug("Received PING!")
+            # logger.debug("Received PING!")
             try:
                 self.request.sendall(SEND)
-                logger.debug("Server Sent Ping Response")
+                # logger.debug("Server Sent Ping Response")
             except socket.error as err:
                 pass
 
