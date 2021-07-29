@@ -22,5 +22,5 @@ python3 generate_compose_yaml.py $1 $2 $3 $4 $5 $6 $7 ${8:-0}
 docker-compose -f docker-compose-rabbit.yaml up -d --remove-orphans
 sleep 25
 
-docker-compose -f docker-compose-client-and-servers.yaml up -d
-docker-compose -f docker-compose-client-and-servers.yaml logs -f
+docker-compose -f docker-compose-servers.yaml up -d
+docker-compose -f docker-compose-servers.yaml logs -f

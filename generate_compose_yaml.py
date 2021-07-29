@@ -24,51 +24,6 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6, n7, r):
     compose_config["version"] = "3.5"
     compose_config["services"] = {}
 
-    node = "client"
-    compose_config["services"][node] = {
-        "container_name": node,
-        "build": {
-            "context": ".",
-            "dockerfile": "./client/client.dockerfile"
-        },
-        "volumes": [
-            "./client:/client",
-            "./communications:/client/communications",
-            "./config:/client/config",
-            "./logger:/client/logger",
-            "./last_hash/client:/last_hash"
-        ],
-        "environment": [
-            "TZ=America/Argentina/Buenos_Aires",
-            "RABBITMQ_HOST=rabbitmq",
-            "CHUCKSIZE_IN_LINES=100",
-            "ENTRY_MATCH_TOKEN_INDEX=0",
-            "ENTRY_MATCH_AVERAGE_RATING_INDEX=5",
-            "ENTRY_MATCH_SERVER_INDEX=9",
-            "ENTRY_MATCH_DURATION_INDEX=10",
-            "ENTRY_MATCH_LADDER_INDEX=3",
-            "ENTRY_MATCH_MAP_INDEX=6",
-            "ENTRY_MATCH_MIRROR_INDEX=2",
-            "ENTRY_PLAYER_TOKEN_INDEX=0",
-            "ENTRY_PLAYER_MATCH_INDEX=1",
-            "ENTRY_PLAYER_RATING_INDEX=2",
-            "ENTRY_PLAYER_WINNER_INDEX=6",
-            "ENTRY_PLAYER_CIV_INDEX=4",
-            "MATCHES_FILE_NAME=matches_reduced.csv",
-            "PLAYERS_FILE_NAME=match_players_reduced.csv"
-        ],
-        "networks": [
-            "age_of_empires_net"
-        ],
-        "depends_on": [
-            "filter_by_ladder_map_and_mirror",
-            "join_master_1v1",
-            "filter_by_rating",
-            "filter_by_avr_rating_duration_and_server",
-            "group_by_match_master"
-        ]
-    }
-
     nodes_to_be_supervised = []
 
     node = "filter_by_avr_rating_duration_and_server"
@@ -582,7 +537,7 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6, n7, r):
         }
     }
   
-    with open("docker-compose-client-and-servers.yaml", "w") as file:
+    with open("docker-compose-servers.yaml", "w") as file:
         yaml.dump(compose_config, file, default_flow_style=False,
                   sort_keys=False, Dumper=NoAliasDumper)
 
