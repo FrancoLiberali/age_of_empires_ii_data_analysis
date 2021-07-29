@@ -147,9 +147,11 @@ def main():
         response_queue.consume(get_handle_authorize_response_function(authorized))
         if authorized[0]:
             send_data_to_server()
-            connection.close()
             break
         time.sleep(TIME_BETWEEN_AUTHORIZATION_RETRY_IN_SECONDS)
+
+    response_queue.delete()
+    connection.close()
 
 if __name__ == '__main__':
     main()

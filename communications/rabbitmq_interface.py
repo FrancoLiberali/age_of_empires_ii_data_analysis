@@ -135,6 +135,9 @@ class QueueInterface(RabbitMQInterface):
     def clear(self):
         self.channel.queue_purge(self.name)
 
+    def delete(self):
+        self.channel.queue_delete(queue=self.name)
+
     def consume(self, on_message_callback, on_sentinel_callback=None, between_hash_and_ack_callback=None):
         self.channel.basic_consume(
             queue=self.name,
