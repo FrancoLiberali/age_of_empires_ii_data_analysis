@@ -3,13 +3,14 @@ import os
 import pathlib
 import threading
 import time
+import uuid
 
 from communications.constants import LONG_MATCHES_TO_AUTHORIZATOR_QUEUE_NAME, \
     TOP_5_USED_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME, \
     WEAKER_WINNER_TO_AUTHORIZATOR_QUEUE_NAME, \
     WINNER_RATE_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME
 from communications.file import FileAlreadyExistError, ListFile, OneLineFile, safe_remove_file
-from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, RabbitMQConnection, split_rows_into_list
+from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, RabbitMQConnection, split_rows_into_list, ExchangeInterface
 import healthcheck.server
 from logger.logger import Logger
 
@@ -25,6 +26,12 @@ OUTPUT_2_SENTINEL_FILE_NAME = "output2_sentinel.txt"
 OUTPUT_3_FILE_NAME = "output3.txt"
 OUTPUT_4_FILE_NAME = "output4.txt"
 FILES_PER_PROCESSED_DATASET_AMOUNT  = 6
+
+CLIENTS_REQUESTS_QUEUE_NAME = 'clients_requests_queue'
+CLIENT_REQUEST_TYPE_INDEX = 0
+CLIENT_REQUEST_ROUTING_KEY_INDEX = 1
+CLIENT_REQUEST_TYPE_AUTHORIZE = 'authorization'
+CLIENT_REQUEST_TYPE_QUERY = 'query'
 
 MAX_LOCK_TIME_IN_SECONDS = 5
 DATASET_TOKEN_LOCK_FILE_NAME = "dataset_token_lock.txt"
@@ -248,17 +255,7 @@ def receive_top_5_used_civs(dataset_token):
     queue.consume(get_receive_top_5_civs_used_function(dataset_token))
     connection.close()
 
-def main():
-    healthcheck.server.start_in_new_process()
-
-    dataset_token = "tokennnn" # TODO arreglar
-    dataset_token_file = OneLineFile(
-        STORAGE_DIR,
-        DATASET_TOKEN_FILE_NAME
-    )
-    dataset_token_file.write(dataset_token)
-    dataset_token_file.close()
-
+def process_dataset(dataset_token):
     receive_long_matches_ids_th = threading.Thread(
         target=receive_long_matches_ids,
         args=(dataset_token,)
@@ -287,6 +284,49 @@ def main():
     receive_weaker_winner_matches_ids_th.join()
     receive_winner_rate_by_civ_th.join()
     receive_top_5_used_civs_th.join()
+
+
+def reply_authorization_request(output_queue, routing_key):
+    dataset_token = uuid.uuid4()
+    dataset_token_file = OneLineFile(
+        STORAGE_DIR,
+        DATASET_TOKEN_FILE_NAME
+    )
+    if dataset_token_file.content == NO_DATASET_BEING_PROCESSED:
+        dataset_token_file.write(dataset_token)
+        dataset_token_file.close()
+        process_dataset(dataset_token)
+        output_queue.send_string(','.join('AUTHORIZED', dataset_token), routing_key)
+    else:
+        output_queue.send_string(','.join('UNAUTHORIZED'), routing_key)
+
+
+def reply_query_request(output_queue, request):
+    pass
+
+
+def get_handle_client_request_function(output_queue):
+    def handle_client_request(queue, received_string, _, __):
+        request = received_string.split(',')
+        if request[CLIENT_REQUEST_TYPE_INDEX] == CLIENT_REQUEST_TYPE_AUTHORIZE:
+            with_lock(
+                DATASET_TOKEN_LOCK_FILE_NAME,
+                reply_authorization_request,
+                output_queue,
+                request[CLIENT_REQUEST_ROUTING_KEY_INDEX]
+            )
+        if request[CLIENT_REQUEST_TYPE_INDEX] == CLIENT_REQUEST_TYPE_QUERY:
+            reply_query_request(output_queue, request)
+
+    return handle_client_request
+
+def main():
+    healthcheck.server.start_in_new_process()
+
+    connection = RabbitMQConnection()
+    requests_queue = QueueInterface(connection, CLIENTS_REQUESTS_QUEUE_NAME)
+    output_queue = ExchangeInterface.newDirect(connection, "client_responses")
+    requests_queue.consume(get_handle_client_request_function(output_queue))
 
 
 if __name__ == '__main__':
