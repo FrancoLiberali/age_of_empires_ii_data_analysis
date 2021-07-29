@@ -46,7 +46,7 @@ def get_line_string_for_matches(line_list):
 
 def get_line_string_for_players(line_list):
     return [
-        line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_TOKEN_INDEX_KEY]], # TODO actualizar el grafico para mostrar que esto tambien esta en las colas ahora
+        line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_TOKEN_INDEX_KEY]],
         line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_MATCH_INDEX_KEY]],
         line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_RATING_INDEX_KEY]],
         line_list[ENTRY_PLAYERS_INDEXES[ENTRY_PLAYER_WINNER_INDEX_KEY]],
