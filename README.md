@@ -19,10 +19,10 @@ Sistema distribuidos que procesa el detalle de partidas jugadas en el videojuego
 	sudo ./install_requirements.sh
 	```
 
-4. Levantar el proyecto
+4. Levantar el servidor
 
 	```bash
-	./start_up.sh n1 n2 n3 n4 n5 n6 n7
+	./start_up.sh n1 n2 n3 n4 n5 n6 n7 [r]
 	```
 
 	* n1: Cantidad de group by match reducer
@@ -32,12 +32,18 @@ Sistema distribuidos que procesa el detalle de partidas jugadas en el videojuego
 	* n5: Cantidad group players of matches by civ reducer team
 	* n6: Cantidad de autorizadores
 	* n7: Cantidad de supervisores
+	* r: Opcional. Valor 0 o 1. En caso de 1, activa el randomizor, que hace que nodos se caigan aletoriamente.
 
-5. Al terminar la ejecución las salidas estarán impresas en la pantalla junto al resto de logs. Para ver solo las salidas usar
+5. Correr los clientes deseados en otra terminal
 
 	```bash
-	./watch_results.sh
+	./start_client.sh matches_csv_file_name match_players_csv_file_name
 	```
+
+	* matches_csv_file_name: Nombre de archivo csv de matches que fue agregado a la carpeta /datasets
+	* match_players_csv_file_name: Nombre de archivo csv de players que fue agregado a la carpeta /datasets
+
+5. Al terminar la ejecución las salidas estarán impresas en la pantalla
 
 	El resultado esperado para los datasets de ejemplo se puede encontrar en:
 	* long_matches_results.txt
@@ -45,14 +51,18 @@ Sistema distribuidos que procesa el detalle de partidas jugadas en el videojuego
 	* winner_rate_by_civ_results.txt
 	* top5_civs_results.txt
 
-6. Para eliminar los containers de docker creados:
+6. Para eliminar los containers de docker y los archivos de estado de nodos creados:
 
 	```bash
 	./stop_all.sh
 	```
 
+	```bash
+	./stop_clients.sh
+	```
+
 ## Configuraciones de despliegue
-Son configurables desde `docker-compose-servers.yaml`
+Son configurables desde `generate_compose_yaml.py`
 
 ### Recomendadas
 
