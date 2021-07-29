@@ -36,19 +36,28 @@ LOCK_LOCKED_SLEEP_TIME_IN_SECONDS = 1
 
 connection_output_1 = RabbitMQConnection()
 queue_output_1 = QueueInterface(
-    connection_output_1, LONG_MATCHES_TO_AUTHORIZATOR_QUEUE_NAME)
+    connection_output_1,
+    LONG_MATCHES_TO_AUTHORIZATOR_QUEUE_NAME,
+    last_hash_strategy=LastHashStrategy.NO_LAST_HASH_SAVING
+)
 connection_output_2 = RabbitMQConnection()
 queue_output_2 = QueueInterface(
     connection_output_2,
     WEAKER_WINNER_TO_AUTHORIZATOR_QUEUE_NAME,
-    last_hash_strategy=LastHashStrategy.LAST_HASH_PER_REDUCER_ID
+    last_hash_strategy=LastHashStrategy.NO_LAST_HASH_SAVING
 )
 connection_output_3 = RabbitMQConnection()
 queue_output_3 = QueueInterface(
-    connection_output_3, WINNER_RATE_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME)
+    connection_output_3,
+    WINNER_RATE_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME,
+    last_hash_strategy=LastHashStrategy.NO_LAST_HASH_SAVING
+)
 connection_output_4 = RabbitMQConnection()
 queue_output_4 = QueueInterface(
-    connection_output_4, TOP_5_USED_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME)
+    connection_output_4,
+    TOP_5_USED_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME,
+    last_hash_strategy=LastHashStrategy.NO_LAST_HASH_SAVING
+)
 
 def with_lock(lock_file_name, function, *args):
     lock_file_full_path = STORAGE_DIR + lock_file_name
@@ -92,10 +101,6 @@ def get_dataset_token():
     return with_dataset_token_lock(internal_get_dataset_token)
 
 def internal_set_finished_with_dataset(dataset_token):
-    for queue in [queue_output_1, queue_output_2, queue_output_3, queue_output_4]:
-        # ack all messages to remove duplicates that otherwise would be considered as results of the next dataset
-        # TODO queue.clear()
-        queue.set_last_hash("")
     dataset_token_file = get_dataset_token_file()
     if dataset_token_file.content == dataset_token:
         logger.info(f"Setting that dataset {dataset_token} finished")

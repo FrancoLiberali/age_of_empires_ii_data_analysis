@@ -1,5 +1,3 @@
-import os
-
 from communications.file import JsonFile, OneLineFile, safe_remove_file
 from config.envvars import REDUCERS_AMOUNT_KEY, REDUCERS_QUEUE_PREFIX_KEY, ROWS_CHUNK_SIZE_KEY, get_config_param
 from communications.constants import SENTINEL_KEY
@@ -120,7 +118,6 @@ def receive_sentinels_stage(state_file, barrier_queue, reducers_output_queue, en
 
 def delete_sentinels_received(barrier_queue):
     barrier_queue.set_last_hash("")
-    barrier_queue.clear()
     safe_remove_file(STATE_STORAGE_DIR + SENTINELS_RECEIVED_FILE_NAME)
 
 def send_sentinel_with_master_id_and_last_hash(reducers_output_queue, entry_queue):

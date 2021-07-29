@@ -1,14 +1,14 @@
 version: '3.5'
 services:
   client:
-    build:
-      context: .
-      dockerfile: ./client/client.dockerfile
+    image: rabbitmq-python-base:0.0.1
     volumes:
     - ./client:/client
     - ./communications:/client/communications
     - ./config:/client/config
     - ./logger:/client/logger
+    - ./datasets:/datasets
+    entrypoint: python3 /client/main.py
     environment:
     - TZ=America/Argentina/Buenos_Aires
     - RABBITMQ_HOST=rabbitmq

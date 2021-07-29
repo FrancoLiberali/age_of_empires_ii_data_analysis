@@ -9,6 +9,8 @@ from communications.rabbitmq_interface import ExchangeInterface, LastHashStrateg
 from logger.logger import Logger
 
 logger = Logger(True)
+
+DATASETS_DIR = "/datasets/"
 CHUCKSIZE_IN_LINES = get_config_param(CHUCKSIZE_IN_LINES_KEY, logger)
 
 ENTRY_MATCHES_INDEXES = get_config_params([
@@ -54,7 +56,7 @@ def get_line_string_for_players(line_list):
 
 def send_file_in_chunks(exchange, file_path, get_columns_function):
     chunk = []
-    with open(file_path) as csvfile:
+    with open(DATASETS_DIR + file_path) as csvfile:
         reader = csv.reader(csvfile)
         for i, line in enumerate(reader):
             if i == 0:
