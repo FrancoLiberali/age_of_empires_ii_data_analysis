@@ -9,7 +9,7 @@ from communications.constants import AUTHORIZED_CODE, CLIENTS_REQUESTS_QUEUE_NAM
     TOP_5_USED_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME, UNAUTHORIZED_CODE, \
     WEAKER_WINNER_TO_AUTHORIZATOR_QUEUE_NAME, \
     WINNER_RATE_CALCULATOR_TO_AUTHORIZATOR_QUEUE_NAME
-from communications.file import File, FileAlreadyExistError, ListFile, OneLineFile, safe_remove_file
+from communications.file import File, ListFile, LockFile, OneLineFile, safe_remove_file
 from communications.rabbitmq_interface import LastHashStrategy, QueueInterface, RabbitMQConnection, split_rows_into_list, ExchangeInterface
 import healthcheck.server
 from logger.logger import Logger
@@ -54,11 +54,15 @@ def with_lock(lock_file_name, function, *args):
     lock_file_full_path = STORAGE_DIR + lock_file_name
     while (True):
         try:
-            OneLineFile(STORAGE_DIR, lock_file_name, only_create=True)
+            lock_file = LockFile(STORAGE_DIR, lock_file_name)
             return_value = function(*args)
-            os.remove(lock_file_full_path)
+            try:
+                lock_file.remove()
+            except FileNotFoundError:
+                logger.error("Something extrange had happend, the lock file if no present when trying to free, probably because max time exceded")
             return return_value
-        except FileAlreadyExistError:
+        except FileExistsError:
+            logger.debug(f"{lock_file_full_path} already locked")
             path = pathlib.Path(lock_file_full_path)
             if path.exists():
                 created_time = datetime.datetime.fromtimestamp(path.stat().st_mtime)
@@ -66,6 +70,7 @@ def with_lock(lock_file_name, function, *args):
                     datetime.datetime.now() - created_time
                 ).total_seconds()
                 if difference > MAX_LOCK_TIME_IN_SECONDS:
+                    logger.debug(f"Removing lock file: {lock_file_full_path} because locked by more than max time")
                     safe_remove_file(lock_file_full_path)
             time.sleep(LOCK_LOCKED_SLEEP_TIME_IN_SECONDS)
             continue
@@ -155,7 +160,7 @@ def get_print_matches_ids_function(output_file_name, output_sentinel_file_name, 
             logger.info(message)
             logger.info('\n'.join(output_file.content))
             output_file.close()
-        except FileAlreadyExistError:
+        except FileExistsError:
             logger.debug(
                 f"Sentinel received already exists: {output_sentinel_file_name}")
         check_if_dataset_finished(dataset_token)
@@ -221,7 +226,7 @@ def receive_winner_rate_of_all_civs(queue, received_string, _, __):
         )
         output_3_file.write(split_rows_into_list(received_string))
         output_3_file.close()
-    except FileAlreadyExistError:
+    except FileExistsError:
         logger.debug(f"The data received for winner rate already exists: {received_string}")
     check_if_dataset_finished(dataset_token)
 
@@ -243,7 +248,7 @@ def receive_top_5_civs_used(queue, received_string, _, __):
         )
         output_4_file.write(split_rows_into_list(received_string))
         output_4_file.close()
-    except FileAlreadyExistError:
+    except FileExistsError:
         logger.debug(f"The data received for top 5 civs already exists: {received_string}")
     check_if_dataset_finished(dataset_token)
 

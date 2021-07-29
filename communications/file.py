@@ -2,9 +2,6 @@ import io
 import json
 import os
 
-class FileAlreadyExistError(Exception):
-    pass
-
 class File():
     def __init__(self, dir_path, file_name, read_content=True, only_create=False, fail_is_not_exist=False):
         self.full_name = dir_path + file_name
@@ -14,7 +11,7 @@ class File():
         try:
             self.file = open(self.full_name, "r+")
             if only_create:
-                raise FileAlreadyExistError
+                raise FileExistsError
             if read_content:
                 self.content = self._load_data()
         except FileNotFoundError:
@@ -25,6 +22,10 @@ class File():
     def close(self):
         self.file.close()
 
+    def remove(self):
+        self.close()
+        os.remove(self.full_name)
+
     def _load_data(self):
         return self.file.read()
 
@@ -33,6 +34,18 @@ class File():
 
     def write(self, text):
         self.file.write(text)
+
+class LockFile():
+    def __init__(self, dir_path, file_name):
+        self.full_name = dir_path + file_name
+        self.file_d = os.open(self.full_name, os.O_CREAT | os.O_EXCL)
+
+    def close(self):
+        os.close(self.file_d)
+
+    def remove(self):
+        self.close()
+        os.remove(self.full_name)
 
 
 class OneLineFile(File):
