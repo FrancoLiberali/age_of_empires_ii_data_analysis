@@ -16,9 +16,10 @@ n4: Reducers amount of join team matches and players
 n5: Reducers amount of group players of team matches by civ
 n6: Authorizators
 n7: Supervisors
+r: randomizer
 """
 
-def generate_compose_yaml(n1, n2, n3, n4, n5, n6, n7):
+def generate_compose_yaml(n1, n2, n3, n4, n5, n6, n7, r):
     compose_config = {}
     compose_config["version"] = "3.5"
     compose_config["services"] = {}
@@ -552,6 +553,27 @@ def generate_compose_yaml(n1, n2, n3, n4, n5, n6, n7):
             ]
         }
 
+    if r:
+        node = "randomizer"
+        compose_config["services"][node] = {
+            "container_name": node,
+            "image": "supervisor:0.0.1",
+            "volumes": [
+                "./randomizer:/randomizer",
+                "./config:/randomizer/config",
+                "./logger:/randomizer/logger",
+                "/var/run/docker.sock:/var/run/docker.sock"
+            ],
+            "entrypoint": "python3 /randomizer/randomizer.py",
+            "environment": [
+                "TZ=America/Argentina/Buenos_Aires",
+                "NODES=" + ','.join(nodes_to_be_supervised) + ',' + ','.join(supervisors),
+            ],
+            "networks": [
+                "age_of_empires_net"
+            ]
+        }
+
     compose_config["networks"] = {
         "age_of_empires_net": {
             "external": {
@@ -568,4 +590,4 @@ if __name__ == '__main__':
     args = sys.argv
     generate_compose_yaml(int(args[1]), int(args[2]), int(args[3]),
                           int(args[4]), int(args[5]), int(args[6]),
-                          int(args[7]))
+                          int(args[7]), bool(int(args[8])))
