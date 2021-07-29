@@ -1,0 +1,37 @@
+version: '3.5'
+services:
+  client:
+    container_name: client
+    build:
+      context: .
+      dockerfile: ./client/client.dockerfile
+    volumes:
+    - ./client:/client
+    - ./communications:/client/communications
+    - ./config:/client/config
+    - ./logger:/client/logger
+    environment:
+    - TZ=America/Argentina/Buenos_Aires
+    - RABBITMQ_HOST=rabbitmq
+    - CHUCKSIZE_IN_LINES=100
+    - ENTRY_MATCH_TOKEN_INDEX=0
+    - ENTRY_MATCH_AVERAGE_RATING_INDEX=5
+    - ENTRY_MATCH_SERVER_INDEX=9
+    - ENTRY_MATCH_DURATION_INDEX=10
+    - ENTRY_MATCH_LADDER_INDEX=3
+    - ENTRY_MATCH_MAP_INDEX=6
+    - ENTRY_MATCH_MIRROR_INDEX=2
+    - ENTRY_PLAYER_TOKEN_INDEX=0
+    - ENTRY_PLAYER_MATCH_INDEX=1
+    - ENTRY_PLAYER_RATING_INDEX=2
+    - ENTRY_PLAYER_WINNER_INDEX=6
+    - ENTRY_PLAYER_CIV_INDEX=4
+    - MATCHES_FILE_NAME=${MATCHES_FILE_NAME}
+    - PLAYERS_FILE_NAME=${PLAYERS_FILE_NAME}
+    networks:
+    - age_of_empires_net
+
+networks:
+  age_of_empires_net:
+    external:
+      name: age_of_empires_net

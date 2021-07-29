@@ -52,7 +52,7 @@ Sistema distribuidos que procesa el detalle de partidas jugadas en el videojuego
 	```
 
 ## Configuraciones de despliegue
-Son configurables desde `docker-compose-client-and-servers.yaml`
+Son configurables desde `docker-compose-servers.yaml`
 
 ### Recomendadas
 

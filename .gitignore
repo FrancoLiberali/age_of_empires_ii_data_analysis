@@ -131,5 +131,5 @@ dmypy.json
 datasets/
 last_hash/
 data/
-docker-compose-client-and-servers.yaml
+docker-compose-servers.yaml
 age_of_empires_ii_da/
