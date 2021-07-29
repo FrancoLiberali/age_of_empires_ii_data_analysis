@@ -8,7 +8,7 @@ class NoAliasDumper(yaml.SafeDumper):
     def ignore_aliases(self, data):
         return True
 
-""" 
+"""
 n1: Reducers amount of group by match
 n2: Reducers amount of join matches 1v1 and players
 n3: Reducers amount of group players of matches 1v1 by civ
@@ -16,7 +16,7 @@ n4: Reducers amount of join team matches and players
 n5: Reducers amount of group players of team matches by civ
 n6: Authorizators
 n7: Supervisors
-r: randomizer
+r: Randomizer
 """
 
 def generate_compose_yaml(n1, n2, n3, n4, n5, n6, n7, r):
