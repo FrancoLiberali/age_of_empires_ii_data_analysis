@@ -274,11 +274,13 @@ def start_results_receiving_threads():
 
 
 def reply_authorization_request(output_exchange, response_queue_name):
+    logger.info("Authorize request arrived")
     dataset_token = uuid.uuid4().hex
     dataset_token_file = get_dataset_token_file()
     if dataset_token_file.content == NO_DATASET_BEING_PROCESSED:
         dataset_token_file.write(dataset_token)
         dataset_token_file.close()
+        logger.info(f"Authorizing client with dataset token {dataset_token}")
         output_exchange.send_string(
             CLIENT_REQUEST_SEPARATOR.join(
                 [AUTHORIZED_CODE, dataset_token]
@@ -286,6 +288,7 @@ def reply_authorization_request(output_exchange, response_queue_name):
             response_queue_name
         )
     else:
+        logger.info(f"Client not authorized")
         output_exchange.send_string(UNAUTHORIZED_CODE, response_queue_name)
 
 
