@@ -1,8 +1,10 @@
 from config.envvars import LADDER_1V1_KEY, LADDER_TEAM_KEY, MAP_ARENA_KEY, MAP_ISLANDS_KEY, NO_MIRROR_KEY, OUTPUT_EXCHANGE_NAME_1V1_KEY, OUTPUT_EXCHANGE_NAME_TEAM_KEY, get_config_params
-from communications.constants import MATCHES_KEY, \
+from communications.constants import FILTER_BY_LADDER_MAP_AND_MIRROR_QUEUE_NAME, \
+    MATCHES_KEY, \
     FROM_CLIENT_MATCH_TOKEN_INDEX, \
     MATCHES_FANOUT_EXCHANGE_NAME
-from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection, split_columns_into_list, split_rows_into_list
+from communications.rabbitmq_interface import ExchangeInterface, LastHashStrategy, QueueInterface, RabbitMQConnection, split_columns_into_list, split_rows_into_list
+import healthcheck.server
 from logger.logger import Logger
 
 logger = Logger()
@@ -44,7 +46,7 @@ def add_to_matches(matches_list, match_columns):
 
 
 def get_on_sentinel_callback_function(output_1v1_exchage, output_team_exchage):
-    def on_sentinel_callback():
+    def on_sentinel_callback(_, __):
         logger.info(
             "Sending sentinel to next stage to notify that all matches ids has been sended")
         output_1v1_exchage.send_sentinel(MATCHES_KEY)
@@ -52,7 +54,7 @@ def get_on_sentinel_callback_function(output_1v1_exchage, output_team_exchage):
     return on_sentinel_callback
 
 def get_filter_by_ladder_map_and_mirror_function(output_1v1_exchage, output_team_exchage):
-    def filter_by_ladder_map_and_mirror(queue, received_string, _):
+    def filter_by_ladder_map_and_mirror(queue, received_string, _, __):
         matches_1v1_matched = []
         matches_team_matched = []
         for row in split_rows_into_list(received_string):
@@ -67,6 +69,7 @@ def get_filter_by_ladder_map_and_mirror_function(output_1v1_exchage, output_team
 
 
 def main():
+    healthcheck.server.start_in_new_process()
     output_exchanges = get_config_params([
         OUTPUT_EXCHANGE_NAME_1V1_KEY,
         OUTPUT_EXCHANGE_NAME_TEAM_KEY,
@@ -76,7 +79,11 @@ def main():
     input_exchage = ExchangeInterface.newFanout(
         connection, MATCHES_FANOUT_EXCHANGE_NAME)
 
-    input_queue = QueueInterface.newPrivate(connection)
+    input_queue = QueueInterface(
+        connection,
+        FILTER_BY_LADDER_MAP_AND_MIRROR_QUEUE_NAME,
+        LastHashStrategy.NO_LAST_HASH_SAVING
+    )
     input_queue.bind(input_exchage)
 
     output_1v1_exchage = ExchangeInterface.newDirect(
@@ -84,20 +91,19 @@ def main():
     output_team_exchage = ExchangeInterface.newDirect(
         connection, output_exchanges[OUTPUT_EXCHANGE_NAME_TEAM_KEY])
 
-    logger.info(
-        f'Starting to receive matches to filter by ladder, map and mirror')
-    input_queue.consume(
-        get_filter_by_ladder_map_and_mirror_function(
-            output_1v1_exchage,
-            output_team_exchage
-        ),
-        get_on_sentinel_callback_function(
-            output_1v1_exchage,
-            output_team_exchage
-        ),
-    )
-
-    connection.close()
+    while True:
+        logger.info(
+            f'Starting to receive matches to filter by ladder, map and mirror')
+        input_queue.consume(
+            get_filter_by_ladder_map_and_mirror_function(
+                output_1v1_exchage,
+                output_team_exchage
+            ),
+            on_sentinel_callback=get_on_sentinel_callback_function(
+                output_1v1_exchage,
+                output_team_exchage
+            ),
+        )
 
 
 if __name__ == '__main__':

@@ -129,3 +129,7 @@ dmypy.json
 .pyre/
 
 datasets/
+last_hash/
+data/
+docker-compose-servers.yaml
+age_of_empires_ii_da/

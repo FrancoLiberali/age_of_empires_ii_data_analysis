@@ -1,61 +1,45 @@
-from communications.constants import SENTINEL_KEY
-from communications.rabbitmq_interface import ExchangeInterface, QueueInterface, RabbitMQConnection
+from more_itertools import first_true
+
+from communications.constants import FROM_CLIENT_PLAYER_TOKEN_INDEX
+from config.envvars import INPUT_QUEUE_NAME_KEY, REDUCER_ID_KEY, get_config_param
+from communications.rabbitmq_interface import QueueInterface, RabbitMQConnection, SENTINEL_MESSAGE, SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR
+import healthcheck.server
 from logger.logger import Logger
 
-logger = Logger()
 
-def get_set_keys_function(keys):
-    # python function currying
-    def set_keys(queue, received_string, _):
-        keys.append(received_string)
-    return set_keys
+def player_already_exists_in_list(player_columns, players_list):
+    return first_true(
+        players_list,
+        pred=lambda player: player[FROM_CLIENT_PLAYER_TOKEN_INDEX] == player_columns[FROM_CLIENT_PLAYER_TOKEN_INDEX]
+    ) is not None
 
-
-def receive_keys(keys_queue):
-    keys = []
-    logger.info('Waiting for keys assignement')
-    keys_queue.consume(
-        get_set_keys_function(keys)
-    )
-    logger.info(f'Assigned keys are: {keys}')
-    return keys
-
-
-def subscribe_to_keys(connection, keys, input_exchange_name):
-    logger.info(f"Subscribing to keys")
-    input_exchange = ExchangeInterface.newDirect(
-        connection, input_exchange_name)
-    input_queue = QueueInterface.newPrivate(connection)
-
-    for key in keys + [SENTINEL_KEY]:
-        input_queue.bind(input_exchange, key)
-    logger.info(f"Finished subscribing to keys")
-    return input_queue
+def get_send_sentinel_to_master_function(logger, barrier_queue):
+    def on_sentinel_callback(_, __):
+        logger.info("Sending sentinel to master to notify finished")
+        barrier_queue.send_string(
+            f"{get_config_param(REDUCER_ID_KEY, logger)}{SENTINEL_MESSAGE_WITH_REDUCER_ID_SEPARATOR}{SENTINEL_MESSAGE}"
+        )
+    return on_sentinel_callback
 
 def main_reducer(
-        keys_queue_name,
         barrier_queue_name,
-        input_exchange_name,
         output_queue_name,
-        receive_and_reduce_function,
-        send_result_to_next_stage_function=None
+        receive_and_reduce_function
     ):
+    healthcheck.server.start_in_new_process()
+    logger = Logger()
     connection = RabbitMQConnection()
 
-    keys_queue = QueueInterface(connection, keys_queue_name)
     barrier_queue = QueueInterface(connection, barrier_queue_name)
+    input_queue = QueueInterface(
+        connection,
+        get_config_param(INPUT_QUEUE_NAME_KEY, logger)
+    )
     output_queue = QueueInterface(connection, output_queue_name)
 
-    keys = receive_keys(keys_queue)
-    input_queue = subscribe_to_keys(
-        connection, keys, input_exchange_name)
-    logger.info("Sending sentinel to master to notify ready to receive data")
-    barrier_queue.send_sentinel()
-
-    result = receive_and_reduce_function(input_queue, output_queue, keys)
-    if send_result_to_next_stage_function is not None:
-        send_result_to_next_stage_function(output_queue, result, keys)
-
-    logger.info("Sending sentinel to master to notify finished")
-    barrier_queue.send_sentinel()
-    connection.close()
+    while True:
+        receive_and_reduce_function(
+            input_queue,
+            output_queue,
+            get_send_sentinel_to_master_function(logger, barrier_queue)
+        )
